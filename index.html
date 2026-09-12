@@ -77,6 +77,35 @@
   background:transparent;color:var(--ink-2);line-height:1.4;vertical-align:middle;
 }
 .remeasure:active{background:var(--surface-2);color:var(--ink);border-style:solid}
+
+/* 模版页 */
+#tplBody{padding:4px 0 24px}
+.tpl-cur{padding:12px 14px;margin:10px 0 14px;border-radius:14px;background:var(--surface-2);
+  font-size:14px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.tpl-count{font-size:12px;color:var(--ink-2)}
+.tpl-row{display:flex;align-items:center;gap:10px;padding:13px 14px;margin:8px 0;
+  border:1px solid var(--line-2);border-radius:14px;background:var(--surface)}
+.tpl-row.on{border-color:var(--accent);background:var(--accent-soft)}
+.tpl-main{flex:1;min-width:0}
+.tpl-name{font-weight:700;line-height:1.35}
+.tpl-sub{font-size:12px;color:var(--ink-2);margin-top:3px}
+.tpl-badge{font-size:12px;color:var(--accent);font-weight:600;white-space:nowrap}
+.tpl-use,.tpl-edit,.tpl-btn{padding:6px 12px;font-size:13px;font-weight:600;font-family:inherit;
+  border:1px solid var(--line-2);border-radius:999px;background:transparent;color:var(--ink-2);white-space:nowrap}
+.tpl-use{border-color:var(--accent);color:var(--accent)}
+.tpl-btn.danger{border-color:#E3B8B8;color:#B00020}
+.tpl-items{margin:-2px 0 12px;padding:10px 14px 14px;border:1px solid var(--line-2);
+  border-top:0;border-radius:0 0 14px 14px;background:var(--surface)}
+.tpl-ph{font-size:12px;color:var(--ink-2);margin:12px 0 4px;font-weight:600}
+.tpl-item{display:flex;align-items:center;gap:9px;padding:7px 2px;font-size:14px;
+  border-bottom:1px solid var(--line);cursor:pointer}
+.tpl-item input{width:18px;height:18px;margin:0;flex:0 0 18px}
+.tpl-t{font-variant-numeric:tabular-nums;color:var(--ink-2);font-size:13px;flex:0 0 42px}
+.tpl-title{flex:1;min-width:0}
+.tpl-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.tpl-new{width:100%;margin-top:14px;padding:13px;font-size:15px;font-weight:600;font-family:inherit;
+  border:1px dashed var(--line-2);border-radius:14px;background:transparent;color:var(--ink-2)}
+.tpl-hint{margin-top:12px;font-size:12px;color:var(--ink-2);line-height:1.6}
 </style>
 <title>住院一日清单</title>
 <style>
@@ -535,7 +564,7 @@ body.export-open > :not(#exportView){display:none!important}
     <button class="tab" id="tabTrend" role="tab" aria-controls="viewTrend" aria-selected="false" tabindex="-1" data-view="trend">图表</button>
     <button class="tab" id="tabHistory" role="tab" aria-controls="viewHistory" aria-selected="false" tabindex="-1" data-view="history">往日</button>
     </div>
-    <button class="nav-top" id="btnBackTop" type="button">回到顶部</button>
+    <button class="tab" id="tabTpl" role="tab" aria-controls="viewTpl" aria-selected="false" tabindex="-1" data-view="tpl">模版</button><button class="nav-top" id="btnBackTop" type="button">回到顶部</button>
   </nav>
 
   <div class="status sync-status"><span id="syncStatus" role="status">正在读取记录…</span><button class="btn" id="btnSyncCfg" type="button">同步设置</button><button class="btn" id="btnSyncRetry" type="button" hidden="">重试</button></div>
@@ -588,7 +617,10 @@ body.export-open > :not(#exportView){display:none!important}
       <div id="historyContent"></div>
     </section>
 
-    <section id="viewMeds" aria-label="用药说明" hidden="">
+    <section id="viewTpl" role="tabpanel" aria-labelledby="tabTpl" hidden="">
+  <div class="wrap"><div id="tplBody"></div></div>
+</section>
+<section id="viewMeds" aria-label="用药说明" hidden="">
       <div class="toolbar"><button class="btn" id="btnMedsBack">返回今日清单</button></div>
       <p class="panelnote">下面是这张清单里每种药的常规用法要点，方便陪护对照。以主管医生和护士的当面医嘱为准；用法有出入时先问护士，不要自己改。</p>
       <div id="medList"></div>
@@ -1514,7 +1546,37 @@ function pauseState(it){
 function isPaused(it){ return pauseState(it) === "on"; }
 /* 只针对今天的跳过（如今天没有这瓶输液），与长期停用分开存 */
 function isSkipped(it){ return !!(state.items[it.id]||{}).skip; }
-function isOff(it){ return isPaused(it) || isSkipped(it); }
+/* ============ 模版 ============
+   模版只决定「哪些事项出现在每天的清单里」，存的是排除表而不是包含表：
+   以后代码里新增事项时，各模版会自动带上，不会凭空消失。
+   模版不影响往日记录 —— 那边读的是每天存下的快照。 */
+function templates(){ return state.config.templates || []; }
+function activeTplId(){ return state.config.activeTpl || ''; }
+function activeTpl(){ return templates().find(t=>t.id===activeTplId()) || null; }
+function tplExcluded(id){ const t=activeTpl(); return !!(t && (t.off||[]).includes(id)); }
+function tplName(){ const t=activeTpl(); return t ? t.name : '全部事项'; }
+
+function newTplId(){ return 'tpl'+Date.now().toString(36); }
+
+function createTemplate(name, off){
+  state.config.templates = templates().concat([{id:newTplId(), name:name, off:(off||[]).slice()}]);
+  saveConfig();
+  return state.config.templates[state.config.templates.length-1];
+}
+function switchTemplate(id){
+  state.config.activeTpl = id || '';
+  saveConfig(); render();
+  setStatus('已切换到「'+tplName()+'」，今天的清单已按它刷新。');
+}
+function toggleTplItem(tplId, itemId){
+  const t=templates().find(x=>x.id===tplId); if(!t)return;
+  t.off = t.off || [];
+  const i=t.off.indexOf(itemId);
+  if(i>=0) t.off.splice(i,1); else t.off.push(itemId);
+  saveConfig(); renderTemplates(); if(t.id===activeTplId()) render();
+}
+
+function isOff(it){ return isPaused(it) || isSkipped(it) || (!it.custom && tplExcluded(it.id)); }
 function setSkip(id, v){
   const r = rec(id);
   if(v){ r.skip = true; r.done = false; delete r.at; }
@@ -1738,15 +1800,17 @@ document.addEventListener("input", (e)=>{
 
 function switchView(v){
   if(!sessionOpen)return;
-  if(!['today','trend','history','meds'].includes(v))return;
+  if(!['today','trend','history','meds','tpl'].includes(v))return;
   document.querySelectorAll(".tab").forEach(b=>{const active=b.dataset.view===v;b.setAttribute("aria-selected",String(active));b.tabIndex=active||(v==='meds'&&b.dataset.view==='today')?0:-1;});
   $("#viewToday").hidden = v!=="today";
   $("#viewMeds").hidden  = v!=="meds";
   $("#viewTrend").hidden = v!=="trend";
   $("#viewHistory").hidden = v!=="history";
+  $("#viewTpl").hidden = v!=="tpl";
   $("#nowBar").hidden = v!=="today";
   if(v==="trend") renderTrend({focusToday:true});
   if(v==="history") renderHistory();
+  if(v==="tpl") renderTemplates();
   window.scrollTo({top:0,behavior:'instant'});
 }
 function scrollPageTop(){
@@ -2496,6 +2560,93 @@ document.getElementById("loginClear").addEventListener("click",async()=>{
   syncSettingsBusy=true;
   try{if(ghOn()&&!await logout())return;document.getElementById("loginToken").value="";}
   finally{syncSettingsBusy=false;}
+});
+
+/* ---------- 模版页渲染 ---------- */
+function renderTemplates(){
+  const box=document.getElementById('tplBody'); if(!box)return;
+  const list=templates(), act=activeTplId();
+  let html='';
+
+  html+='<div class="tpl-cur">当前生效：<b>'+esc(tplName())+'</b>'+
+    '<span class="tpl-count">今天 '+activeItems().length+' 项</span></div>';
+
+  html+='<div class="tpl-row'+(act===''?' on':'')+'" data-tpl-pick="">'+
+    '<div class="tpl-main"><div class="tpl-name">全部事项</div>'+
+    '<div class="tpl-sub">不做筛选，清单里出现所有事项</div></div>'+
+    (act===''?'<span class="tpl-badge">使用中</span>':'<button type="button" class="tpl-use" data-tpl-use="">切换</button>')+
+    '</div>';
+
+  for(const t of list){
+    const on=t.id===act, n=ITEMS.filter(i=>!(t.off||[]).includes(i.id)).length;
+    html+='<div class="tpl-row'+(on?' on':'')+'" data-tpl="'+esc(t.id)+'">'+
+      '<div class="tpl-main"><div class="tpl-name">'+esc(t.name)+'</div>'+
+      '<div class="tpl-sub">'+n+' 项事项</div></div>'+
+      (on?'<span class="tpl-badge">使用中</span>':'<button type="button" class="tpl-use" data-tpl-use="'+esc(t.id)+'">切换</button>')+
+      '<button type="button" class="tpl-edit" data-tpl-edit="'+esc(t.id)+'">编辑</button>'+
+      '</div>';
+    if(editingTpl===t.id){
+      html+='<div class="tpl-items">';
+      let ph='';
+      for(const it of ITEMS){
+        if(it.ph!==ph){ ph=it.ph; html+='<div class="tpl-ph">'+esc(phaseName(ph))+'</div>'; }
+        const inc=!(t.off||[]).includes(it.id);
+        html+='<label class="tpl-item"><input type="checkbox" data-tpl-item="'+esc(t.id)+'" value="'+esc(it.id)+'"'+(inc?' checked':'')+'>'+
+          '<span class="tpl-t">'+esc(it.t)+'</span><span class="tpl-title">'+esc(it.title)+'</span></label>';
+      }
+      html+='<div class="tpl-acts">'+
+        '<button type="button" class="tpl-btn" data-tpl-rename="'+esc(t.id)+'">改名</button>'+
+        '<button type="button" class="tpl-btn danger" data-tpl-del="'+esc(t.id)+'">删除模版</button>'+
+        '<button type="button" class="tpl-btn" data-tpl-edit="">收起</button></div>';
+      html+='</div>';
+    }
+  }
+
+  html+='<button type="button" class="tpl-new" id="btnNewTpl">＋ 从当前新建一个模版</button>'+
+    '<div class="tpl-hint">模版只决定每天清单里出现哪些事项。临时加的事项不受模版影响，始终只在当天。往日记录也不受影响。</div>';
+  box.innerHTML=html;
+}
+function phaseName(ph){
+  const m={dawn:'清晨',morn:'上午',noon:'中午',aft:'下午',eve:'傍晚',night:'睡前'};
+  return m[ph]||ph||'其他';
+}
+let editingTpl='';
+
+document.addEventListener('click', async (e)=>{
+  const use=e.target.closest('[data-tpl-use]');
+  if(use){ switchTemplate(use.dataset.tplUse); renderTemplates(); return; }
+  const ed=e.target.closest('[data-tpl-edit]');
+  if(ed){ editingTpl = (editingTpl===ed.dataset.tplEdit) ? '' : ed.dataset.tplEdit; renderTemplates(); return; }
+  const rn=e.target.closest('[data-tpl-rename]');
+  if(rn){
+    const t=templates().find(x=>x.id===rn.dataset.tplRename); if(!t)return;
+    const name=await askText('模版名称','比如「省一每日清单」「居家每日清单」。',t.name);
+    if(name===null||!name.trim())return;
+    t.name=name.trim(); saveConfig(); renderTemplates(); render(); return;
+  }
+  const del=e.target.closest('[data-tpl-del]');
+  if(del){
+    const t=templates().find(x=>x.id===del.dataset.tplDel); if(!t)return;
+    const yes=await askConfirm('删除模版「'+t.title_||t.name+'」？','以往记录不受影响。如果它正在使用，会退回「全部事项」。');
+    if(!yes)return;
+    state.config.templates=templates().filter(x=>x.id!==t.id);
+    if(activeTplId()===t.id) state.config.activeTpl='';
+    editingTpl=''; saveConfig(); renderTemplates(); render();
+    setStatus('已删除模版。'); return;
+  }
+  const nw=e.target.closest('#btnNewTpl');
+  if(nw){
+    const name=await askText('新模版名称','比如「附二每日清单」「居家每日清单」。','');
+    if(name===null||!name.trim())return;
+    const cur=activeTpl();
+    const t=createTemplate(name.trim(), cur?(cur.off||[]):[]);
+    editingTpl=t.id; renderTemplates();
+    setStatus('已新建「'+t.name+'」，从当前模版复制而来，可以逐项勾掉不需要的。'); return;
+  }
+});
+document.addEventListener('change',(e)=>{
+  const cb=e.target.closest('[data-tpl-item]');
+  if(cb) toggleTplItem(cb.dataset.tplItem, cb.value);
 });
 </script>
 
