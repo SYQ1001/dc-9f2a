@@ -774,6 +774,11 @@ const defaultConfig=clone(state.config);
 let sharedDoc={days:{},config:{},vitals:{}}, cloudReady=false, cloudBusy=false, pullBusy=false;
 let pending=LS.get("care.shared.pending.v2")||{}, inFlight=LS.get("care.shared.inflight.v2")||null;
 let queueTimer=null, remoteMap={}, pendingSerial=Date.now();
+// 连着勾几项时合并成一次提交。GitHub 每小时限 500 次写，也是为了别把仓库历史堆爆。
+// 提交频率实际由轮询周期决定（每次轮询会顺带推送攒着的改动）。
+// 20 秒一次：GitHub 每小时限 500 次写，也避免仓库历史堆太快。
+const PULL_INTERVAL_MS=20000;
+const SYNC_DEBOUNCE_MS=3000;
 function syncMessage(s,failed=false){
   // 本地模式下绝不能显示"已同步"——会让人以为数据已经共享，实际只在本机
   if(typeof localMode!=="undefined"&&localMode&&/已同步|共同记录/.test(s))s=localModeMsg||"本地模式 · 记录只存在这台手机上";
@@ -842,7 +847,7 @@ function queueScope(path,value){
     pending[k]=next[k]===undefined?{delete:true,serial:++pendingSerial}:{value:clone(next[k]),serial:++pendingSerial};
   }
   sharedDoc=unflatten(effectiveMap());sharedDoc.config=configWire(configFromWire(sharedDoc.config));persistQueue();
-  if(Object.keys(pending).length){syncMessage("有修改待同步…");clearTimeout(queueTimer);queueTimer=setTimeout(flushCloud,300);}
+  if(Object.keys(pending).length){syncMessage("有修改待同步…");clearTimeout(queueTimer);queueTimer=setTimeout(flushCloud,SYNC_DEBOUNCE_MS);}
 }
 const LOCAL_KEY="care.local.entries.v1";
 const GH_CFG_KEY="care.sync.github.v1";
@@ -2300,8 +2305,12 @@ async function boot(){
     rolloverDay();await syncPull();
     if(cloudReady)tickRefresh();
   }
-  setInterval(refreshTick,5000);
-  document.addEventListener("visibilitychange",()=>{if(!document.hidden)refreshTick();});
+  setInterval(refreshTick,PULL_INTERVAL_MS);
+  document.addEventListener("visibilitychange",()=>{
+    if(document.hidden){ clearTimeout(queueTimer); flushCloud(); }   // 切走前先把攒着的推上去
+    else refreshTick();
+  });
+  window.addEventListener("pagehide",()=>{ clearTimeout(queueTimer); flushCloud(); });
   window.addEventListener("online",()=>{flushCloud();syncPull();});
   document.getElementById("btnSyncRetry").onclick=async()=>{const btn=document.getElementById("btnSyncRetry");btn.disabled=true;try{await flushCloud();await syncPull(true);}finally{btn.disabled=false;}};
 }
