@@ -54,6 +54,22 @@
   html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   input[type=file]{ font-size:16px }
   .btn, .btn-ghost, .tab, .lnk, .pausebar button, .dlg-f button { font-size: inherit; }
+
+/* 输入弹窗里的辅助工具（粘贴 / 清空）：视觉分量低于主按钮 */
+.dlg-tools{display:flex;justify-content:flex-end;gap:7px;margin-top:9px;align-items:center}
+.dlg-tools button{
+  padding:6px 13px;font-size:13px;font-weight:600;font-family:inherit;
+  border:1px solid var(--line-2);border-radius:999px;
+  background:transparent;color:var(--ink-2);
+  line-height:1.4;transition:background .12s,color .12s,border-color .12s;
+}
+.dlg-tools button[data-paste]{border-color:var(--accent);color:var(--accent)}
+.dlg-tools button[data-paste]:active{background:var(--accent);color:#fff}
+.dlg-tools button[data-clear]:active{background:var(--surface-2);color:var(--ink)}
+.dlg-tools button:disabled{opacity:.45}
+.dlg-tip{margin-top:7px;font-size:12px;color:var(--ink-2);min-height:1.1em;text-align:right}
+.dlg-tip.warn{color:#B00020}
+.dlg-tip.ok{color:var(--accent)}
 </style>
 <title>住院一日清单</title>
 <style>
@@ -1397,7 +1413,7 @@ function dlgOpen(opts){
         '<div class="dlg-b">'+(opts.body||"")+
           (opts.presets?'<div class="dlg-presets">'+opts.presets.map((label,i)=>'<button type="button" data-preset="'+i+'">'+esc(label)+'</button>').join('')+'</div>':'')+
           (isInput ? '<input id="dlgIn" type="'+(opts.type==='time'?'time':'text')+'" aria-label="'+esc(opts.title||'填写内容')+'" '+(opts.numeric?'inputmode="numeric"':'')+' value="'+esc(opts.value||"")+'">' : '')+
-          (isInput&&opts.paste?'<div class="dlg-presets"><button type="button" data-paste="1">粘贴</button></div>':'')+
+          (isInput&&opts.tools?'<div class="dlg-tools"><button type="button" data-clear="1">清空</button><button type="button" data-paste="1">粘贴</button></div><div class="dlg-tip" data-tip></div>':'')+
           (isChoice?'<div class="dlg-choices">'+opts.choices.map((label,i)=>'<button type="button" data-choice="'+i+'">'+esc(label)+'</button>').join('')+'</div>':'')+
         '</div>'+
         '<div class="dlg-f">'+
@@ -1415,14 +1431,19 @@ function dlgOpen(opts){
     mask.addEventListener("click", e=>{
       if(e.target===mask) return done(null);
       const preset=e.target.closest("[data-preset]");if(opts.presets&&preset){const value=opts.presets[Number(preset.dataset.preset)];if(value!==undefined)done(value);return;}
+      const tip=(msg,cls)=>{const t=mask.querySelector("[data-tip]");if(!t)return;t.textContent=msg||"";t.className="dlg-tip"+(cls?" "+cls:"");clearTimeout(t._h);if(msg)t._h=setTimeout(()=>{t.textContent="";t.className="dlg-tip";},2600);};
+      const clearBtn=e.target.closest("[data-clear]");
+      if(clearBtn&&inp){ inp.value=""; inp.focus(); tip("已清空"); return; }
       const pasteBtn=e.target.closest("[data-paste]");
       if(pasteBtn&&inp){
+        pasteBtn.disabled=true;
         (async()=>{
           try{
             const txt=await navigator.clipboard.readText();
-            if(txt&&txt.trim()){inp.value=txt.trim();pasteBtn.textContent="已粘贴";}
-            else pasteBtn.textContent="剪贴板是空的";
-          }catch(err){ pasteBtn.textContent="读不到剪贴板，请长按输入框粘贴"; }
+            if(txt&&txt.trim()){inp.value=txt.trim();tip("已粘贴","ok");}
+            else tip("剪贴板是空的","warn");
+          }catch(err){ tip("读不到剪贴板，请长按输入框粘贴","warn"); }
+          finally{ pasteBtn.disabled=false; }
         })();
         return;
       }
@@ -1438,7 +1459,7 @@ function dlgOpen(opts){
   });
 }
 const askConfirm = (title, body, opts)=> dlgOpen(Object.assign({type:"confirm",title,body:body||""}, opts||{}));
-const askText = (title, body, value, numeric, paste)=> dlgOpen({type:"input",title,body:body||"",value:value==null?"":String(value),numeric:!!numeric,paste:!!paste});
+const askText = (title, body, value, numeric, tools)=> dlgOpen({type:"input",title,body:body||"",value:value==null?"":String(value),numeric:!!numeric,tools:!!tools});
 
 /* ============ 交互 ============ */
 function toggle(id){
