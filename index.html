@@ -83,29 +83,43 @@
 .tpl-cur{padding:12px 14px;margin:10px 0 14px;border-radius:14px;background:var(--surface-2);
   font-size:14px;display:flex;justify-content:space-between;align-items:center;gap:10px}
 .tpl-count{font-size:12px;color:var(--ink-2)}
-.tpl-row{display:flex;align-items:center;gap:10px;padding:13px 14px;margin:8px 0;
+.tpl-row{display:flex;align-items:center;gap:8px;padding:13px 14px;margin:8px 0;
   border:1px solid var(--line-2);border-radius:14px;background:var(--surface)}
 .tpl-row.on{border-color:var(--accent);background:var(--accent-soft)}
 .tpl-main{flex:1;min-width:0}
 .tpl-name{font-weight:700;line-height:1.35}
 .tpl-sub{font-size:12px;color:var(--ink-2);margin-top:3px}
 .tpl-badge{font-size:12px;color:var(--accent);font-weight:600;white-space:nowrap}
-.tpl-use,.tpl-edit,.tpl-btn{padding:6px 12px;font-size:13px;font-weight:600;font-family:inherit;
+.tpl-use,.tpl-edit,.tpl-btn,.tpl-add{padding:6px 12px;font-size:13px;font-weight:600;font-family:inherit;
   border:1px solid var(--line-2);border-radius:999px;background:transparent;color:var(--ink-2);white-space:nowrap}
-.tpl-use{border-color:var(--accent);color:var(--accent)}
+.tpl-use,.tpl-add{border-color:var(--accent);color:var(--accent)}
 .tpl-btn.danger{border-color:#E3B8B8;color:#B00020}
-.tpl-items{margin:-2px 0 12px;padding:10px 14px 14px;border:1px solid var(--line-2);
-  border-top:0;border-radius:0 0 14px 14px;background:var(--surface)}
-.tpl-ph{font-size:12px;color:var(--ink-2);margin:12px 0 4px;font-weight:600}
-.tpl-item{display:flex;align-items:center;gap:9px;padding:7px 2px;font-size:14px;
-  border-bottom:1px solid var(--line);cursor:pointer}
-.tpl-item input{width:18px;height:18px;margin:0;flex:0 0 18px}
-.tpl-t{font-variant-numeric:tabular-nums;color:var(--ink-2);font-size:13px;flex:0 0 42px}
-.tpl-title{flex:1;min-width:0}
-.tpl-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.tpl-items{margin:-2px 0 12px;padding:8px 0 14px;border:1px solid var(--line-2);
+  border-top:0;border-radius:0 0 14px 14px;background:var(--surface);overflow:hidden}
+.tpl-warn{margin:4px 14px 10px;padding:8px 11px;border-radius:10px;
+  background:#FFF6E5;color:#8A5100;font-size:12.5px}
+
+/* 左滑移出 */
+.swipe{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
+.swipe-bg{position:absolute;inset:0;display:flex;align-items:center;justify-content:flex-end;
+  padding-right:22px;background:#C4342F;color:#fff;font-size:14px;font-weight:600}
+.swipe-fg{position:relative;display:flex;align-items:center;gap:10px;padding:11px 14px;
+  background:var(--surface);touch-action:pan-y;will-change:transform}
+.tpl-mark{flex:0 0 17px;width:17px;height:17px;border:1.5px solid var(--line-2);
+  border-radius:5px;display:inline-block}
+.tpl-time{flex:0 0 auto;padding:3px 9px;font-size:13px;font-weight:600;font-family:inherit;
+  font-variant-numeric:tabular-nums;border:1px solid var(--line-2);border-radius:8px;
+  background:var(--surface-2);color:var(--ink)}
+.tpl-time.unset{border-color:#E0BE86;background:#FFF6E5;color:#8A5100}
+.tpl-title{flex:1;min-width:0;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tpl-ren{flex:0 0 auto;padding:5px 11px;font-size:12.5px;font-family:inherit;
+  border:1px solid var(--line-2);border-radius:999px;background:transparent;color:var(--ink-2)}
+.tpl-acts{display:flex;gap:8px;flex-wrap:wrap;margin:14px 14px 0}
 .tpl-new{width:100%;margin-top:14px;padding:13px;font-size:15px;font-weight:600;font-family:inherit;
   border:1px dashed var(--line-2);border-radius:14px;background:transparent;color:var(--ink-2)}
-.tpl-hint{margin-top:12px;font-size:12px;color:var(--ink-2);line-height:1.6}
+.tpl-hint{margin:12px 14px 0;font-size:12px;color:var(--ink-2);line-height:1.6}
+@media (prefers-reduced-motion: reduce){ .swipe-fg{will-change:auto} }
+
 </style>
 <title>住院一日清单</title>
 <style>
@@ -1150,7 +1164,47 @@ function customItems(date=state.date){
     kcls: c.kind==="进食"?"k-meal":(c.kind==="输液"?"k-iv":"")
   }));
 }
-function allItems(){ return ITEMS.concat(customItems()); }
+/* 模版覆盖层：时间按模版存，改名全局存。
+   在 allItems 这一层套上，下游的 timeOf / titleOf / 渲染全部自动生效，
+   不用去动 timeOf 里那套餐食联动的递归逻辑。 */
+function tplTimes(){ const t=activeTpl(); return (t&&t.t)||{}; }
+function itemNames(){ return state.config.names||{}; }
+function tplPatch(it){
+  const tt=tplTimes()[it.id], nm=itemNames()[it.id];
+  if(tt===undefined && nm===undefined) return it;
+  const o=Object.assign({},it);
+  if(tt!==undefined) o.t=tt;
+  if(nm!==undefined) o.title=nm;
+  return o;
+}
+function allItems(){ return ITEMS.map(tplPatch).concat(customItems()); }
+
+function setTplTime(itemId, hm){
+  let t=activeTpl();
+  if(!t){ // 还在「全部事项」上改时间，就地建一个模版承载它
+    t=createTemplate('我的清单', []);
+    state.config.activeTpl=t.id;
+  }
+  t.t=t.t||{}; t.t[itemId]=hm;
+  saveConfig(); renderTemplates(); render();
+}
+function renameItem(itemId, name){
+  state.config.names=state.config.names||{};
+  if(name) state.config.names[itemId]=name; else delete state.config.names[itemId];
+  saveConfig(); renderTemplates(); render();
+}
+function removeFromTpl(itemId){
+  let t=activeTpl();
+  if(!t){ t=createTemplate('我的清单', []); state.config.activeTpl=t.id; }
+  t.off=t.off||[];
+  if(!t.off.includes(itemId)) t.off.push(itemId);
+  saveConfig(); render();
+}
+function addToTpl(itemId){
+  const t=activeTpl(); if(!t)return;
+  t.off=(t.off||[]).filter(x=>x!==itemId);
+  saveConfig(); renderTemplates(); render();
+}
 function itemById(id){ return allItems().find(i=>i.id===id); }
 function phaseOfTime(t){
   const m=mins(t);
@@ -2562,61 +2616,189 @@ document.getElementById("loginClear").addEventListener("click",async()=>{
   finally{syncSettingsBusy=false;}
 });
 
-/* ---------- 模版页渲染 ---------- */
+/* ---------- 模版页 ---------- */
+let editingTpl='';
+
+function phaseName(ph){
+  const m={dawn:'清晨',morn:'上午',noon:'中午',aft:'下午',eve:'傍晚',night:'睡前'};
+  return m[ph]||ph||'其他';
+}
+function tplItemRows(t){
+  const off=t.off||[], times=t.t||{}, names=itemNames();
+  const rows=ITEMS.filter(i=>!off.includes(i.id)).map(i=>({
+    id:i.id, t:(times[i.id]!==undefined?times[i.id]:i.t),
+    title:(names[i.id]!==undefined?names[i.id]:i.title),
+    unset:times[i.id]==='00:00'
+  }));
+  rows.sort((a,b)=>a.t.localeCompare(b.t));
+  return rows;
+}
 function renderTemplates(){
   const box=document.getElementById('tplBody'); if(!box)return;
   const list=templates(), act=activeTplId();
-  let html='';
-
-  html+='<div class="tpl-cur">当前生效：<b>'+esc(tplName())+'</b>'+
+  let html='<div class="tpl-cur">当前生效：<b>'+esc(tplName())+'</b>'+
     '<span class="tpl-count">今天 '+activeItems().length+' 项</span></div>';
 
-  html+='<div class="tpl-row'+(act===''?' on':'')+'" data-tpl-pick="">'+
+  html+='<div class="tpl-row'+(act===''?' on':'')+'">'+
     '<div class="tpl-main"><div class="tpl-name">全部事项</div>'+
     '<div class="tpl-sub">不做筛选，清单里出现所有事项</div></div>'+
     (act===''?'<span class="tpl-badge">使用中</span>':'<button type="button" class="tpl-use" data-tpl-use="">切换</button>')+
     '</div>';
 
   for(const t of list){
-    const on=t.id===act, n=ITEMS.filter(i=>!(t.off||[]).includes(i.id)).length;
-    html+='<div class="tpl-row'+(on?' on':'')+'" data-tpl="'+esc(t.id)+'">'+
+    const on=t.id===act, rows=tplItemRows(t);
+    html+='<div class="tpl-row'+(on?' on':'')+'">'+
       '<div class="tpl-main"><div class="tpl-name">'+esc(t.name)+'</div>'+
-      '<div class="tpl-sub">'+n+' 项事项</div></div>'+
-      (on?'<span class="tpl-badge">使用中</span>':'<button type="button" class="tpl-use" data-tpl-use="'+esc(t.id)+'">切换</button>')+
-      '<button type="button" class="tpl-edit" data-tpl-edit="'+esc(t.id)+'">编辑</button>'+
+      '<div class="tpl-sub">'+rows.length+' 项事项</div></div>'+
+      (on?'<button type="button" class="tpl-add" data-tpl-add="'+esc(t.id)+'">加事项</button><span class="tpl-badge">使用中</span>'
+         :'<button type="button" class="tpl-use" data-tpl-use="'+esc(t.id)+'">切换</button>')+
+      '<button type="button" class="tpl-edit" data-tpl-edit="'+esc(t.id)+'">'+(editingTpl===t.id?'收起':'编辑')+'</button>'+
       '</div>';
+
     if(editingTpl===t.id){
       html+='<div class="tpl-items">';
-      let ph='';
-      for(const it of ITEMS){
-        if(it.ph!==ph){ ph=it.ph; html+='<div class="tpl-ph">'+esc(phaseName(ph))+'</div>'; }
-        const inc=!(t.off||[]).includes(it.id);
-        html+='<label class="tpl-item"><input type="checkbox" data-tpl-item="'+esc(t.id)+'" value="'+esc(it.id)+'"'+(inc?' checked':'')+'>'+
-          '<span class="tpl-t">'+esc(it.t)+'</span><span class="tpl-title">'+esc(it.title)+'</span></label>';
+      const unset=rows.filter(r=>r.unset).length;
+      if(unset) html+='<div class="tpl-warn">有 '+unset+' 项还没设时间，点时间可以改</div>';
+      for(const r of rows){
+        html+='<div class="swipe" data-swipe="'+esc(t.id)+'|'+esc(r.id)+'">'+
+          '<div class="swipe-bg"><span>移出</span></div>'+
+          '<div class="swipe-fg">'+
+            '<span class="tpl-mark" aria-hidden="true"></span>'+
+            '<button type="button" class="tpl-time'+(r.unset?' unset':'')+'" data-tpl-time="'+esc(t.id)+'|'+esc(r.id)+'">'+esc(r.t)+'</button>'+
+            '<span class="tpl-title">'+esc(r.title)+'</span>'+
+            '<button type="button" class="tpl-ren" data-tpl-ren="'+esc(r.id)+'">重命名</button>'+
+          '</div></div>';
       }
       html+='<div class="tpl-acts">'+
-        '<button type="button" class="tpl-btn" data-tpl-rename="'+esc(t.id)+'">改名</button>'+
-        '<button type="button" class="tpl-btn danger" data-tpl-del="'+esc(t.id)+'">删除模版</button>'+
-        '<button type="button" class="tpl-btn" data-tpl-edit="">收起</button></div>';
+        '<button type="button" class="tpl-btn" data-tpl-rename="'+esc(t.id)+'">模版改名</button>'+
+        '<button type="button" class="tpl-btn danger" data-tpl-del="'+esc(t.id)+'">删除模版</button></div>'+
+        '<div class="tpl-hint">左滑一条可以把它移出本模版，事项本身还在，随时能加回来。</div>';
       html+='</div>';
     }
   }
-
   html+='<button type="button" class="tpl-new" id="btnNewTpl">＋ 从当前新建一个模版</button>'+
-    '<div class="tpl-hint">模版只决定每天清单里出现哪些事项。临时加的事项不受模版影响，始终只在当天。往日记录也不受影响。</div>';
+    '<div class="tpl-hint">模版决定每天清单里出现哪些事项、几点做。改名对所有模版生效；时间只在本模版生效。临时加的事项不受模版影响，始终只在当天。往日记录也不受影响。</div>';
   box.innerHTML=html;
 }
-function phaseName(ph){
-  const m={dawn:'清晨',morn:'上午',noon:'中午',aft:'下午',eve:'傍晚',night:'睡前'};
-  return m[ph]||ph||'其他';
-}
-let editingTpl='';
 
+/* ---------- 左滑移出：1:1 跟手、可随时抓停反向 ---------- */
+const SWIPE_W=88;
+const reduceMotion=()=>window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function springTo(el, from, to, vel, onDone){
+  if(el._raf) cancelAnimationFrame(el._raf);
+  if(reduceMotion()){ el.style.transform='translateX('+to+'px)'; el._x=to; onDone&&onDone(); return; }
+  // 临界阻尼，无回弹；带上手指松开时的速度，接得上不突兀
+  const stiff=220, damp=2*Math.sqrt(stiff);
+  let x=from, v=vel, last=performance.now();
+  const step=(now)=>{
+    const dt=Math.min((now-last)/1000, 0.032); last=now;
+    const a=-stiff*(x-to)-damp*v;
+    v+=a*dt; x+=v*dt;
+    el.style.transform='translateX('+x+'px)'; el._x=x; el._v=v;
+    if(Math.abs(x-to)<0.5 && Math.abs(v)<12){
+      el.style.transform='translateX('+to+'px)'; el._x=to; el._v=0; el._raf=null; onDone&&onDone(); return;
+    }
+    el._raf=requestAnimationFrame(step);
+  };
+  el._raf=requestAnimationFrame(step);
+}
+
+document.addEventListener('pointerdown',(e)=>{
+  const fg=e.target.closest('.swipe-fg'); if(!fg)return;
+  if(e.target.closest('button'))return;            // 按钮自己响应，不抢
+  const wrap=fg.parentElement;
+  if(wrap._raf){ cancelAnimationFrame(wrap._raf); wrap._raf=null; }  // 抓住飞行中的动画
+  wrap._startX=e.clientX; wrap._baseX=wrap._x||0; wrap._hist=[[e.clientX,performance.now()]];
+  wrap._drag=false; wrap._pid=e.pointerId;
+  fg.setPointerCapture(e.pointerId);
+},{passive:true});
+
+document.addEventListener('pointermove',(e)=>{
+  const fg=e.target.closest('.swipe-fg'); if(!fg)return;
+  const wrap=fg.parentElement; if(wrap._pid!==e.pointerId||wrap._startX===undefined)return;
+  let dx=e.clientX-wrap._startX;
+  if(!wrap._drag){ if(Math.abs(dx)<6)return; wrap._drag=true; }
+  let x=wrap._baseX+dx;
+  if(x>0) x=x*0.25;                                 // 往右是边界，给阻尼而不是硬停
+  if(x<-SWIPE_W) x=-SWIPE_W-(-SWIPE_W-x)*0.35;
+  wrap._x=x; fg.style.transform='translateX('+x+'px)';
+  wrap._hist.push([e.clientX,performance.now()]);
+  if(wrap._hist.length>6)wrap._hist.shift();
+},{passive:true});
+
+function endSwipe(e){
+  const fg=e.target.closest('.swipe-fg'); if(!fg)return;
+  const wrap=fg.parentElement; if(wrap._pid!==e.pointerId||wrap._startX===undefined)return;
+  wrap._startX=undefined;
+  if(!wrap._drag){ wrap._drag=false; return; }
+  const h=wrap._hist, a=h[0], b=h[h.length-1];
+  const span=b[1]-a[1];
+  // 时间跨度太短时算出的速度不可信（几毫秒内的抖动会得到几千 px/s）
+  const v = span>=16 ? (b[0]-a[0])/span*1000 : 0;
+  const x=wrap._x||0;
+  // 速度定方向，但必须先真的滑出去一段，避免手指轻微一抖就删掉
+  const moved = x < -20;
+  const commit = moved && (v < -300 ? true : (v > 300 ? false : x < -SWIPE_W/2));
+  if(commit){
+    springTo(fg, x, -window.innerWidth, v, ()=>{
+      const [tid,iid]=wrap.dataset.swipe.split('|');
+      const t=templates().find(z=>z.id===tid); if(!t)return;
+      t.off=t.off||[]; if(!t.off.includes(iid))t.off.push(iid);
+      saveConfig(); renderTemplates(); if(tid===activeTplId())render();
+      setStatus('已移出本模版，事项还在，可以用「加事项」加回来。');
+    });
+  } else springTo(fg, x, 0, v);
+}
+document.addEventListener('pointerup',endSwipe);
+document.addEventListener('pointercancel',endSwipe);
+
+/* ---------- 模版页按钮 ---------- */
 document.addEventListener('click', async (e)=>{
   const use=e.target.closest('[data-tpl-use]');
   if(use){ switchTemplate(use.dataset.tplUse); renderTemplates(); return; }
+
   const ed=e.target.closest('[data-tpl-edit]');
-  if(ed){ editingTpl = (editingTpl===ed.dataset.tplEdit) ? '' : ed.dataset.tplEdit; renderTemplates(); return; }
+  if(ed){ editingTpl=(editingTpl===ed.dataset.tplEdit)?'':ed.dataset.tplEdit; renderTemplates(); return; }
+
+  const ren=e.target.closest('[data-tpl-ren]');
+  if(ren){
+    const id=ren.dataset.tplRen, base=ITEMS.find(i=>i.id===id);
+    const cur=(itemNames()[id]!==undefined)?itemNames()[id]:(base?base.title:'');
+    const name=await askText('重命名事项','改名对所有模版生效。以往记录不受影响，仍显示当时的名字。',cur);
+    if(name===null)return;
+    renameItem(id, name.trim()===(base?base.title:'')?'':name.trim());
+    return;
+  }
+
+  const tm=e.target.closest('[data-tpl-time]');
+  if(tm){
+    const [tid,iid]=tm.dataset.tplTime.split('|');
+    const t=templates().find(z=>z.id===tid); if(!t)return;
+    const cur=(t.t&&t.t[iid])||((ITEMS.find(i=>i.id===iid)||{}).t)||'00:00';
+    const v=await dlgOpen({type:'time',title:'几点做？',body:'只改这个模版，其他模版不受影响。',value:cur});
+    if(v===null)return;
+    t.t=t.t||{}; t.t[iid]=v; saveConfig(); renderTemplates();
+    if(tid===activeTplId())render();
+    return;
+  }
+
+  const add=e.target.closest('[data-tpl-add]');
+  if(add){
+    const t=templates().find(z=>z.id===add.dataset.tplAdd); if(!t)return;
+    const off=t.off||[];
+    const names=itemNames();
+    const pool=ITEMS.filter(i=>off.includes(i.id));
+    const choices=pool.map(i=>(names[i.id]!==undefined?names[i.id]:i.title)).concat(['＋ 新建一个事项']);
+    if(!pool.length){ setStatus('本模版已经包含全部事项。'); return; }
+    const pick=await dlgOpen({type:'choice',title:'加事项',body:'从事项表里挑一条加回本模版。',choices:choices});
+    if(pick===null)return;
+    if(pick==='＋ 新建一个事项'){ setStatus('新建事项请用「今天」页的「＋ 添加事项」。'); return; }
+    const hit=pool[choices.indexOf(pick)];
+    if(hit) addToTpl(hit.id);
+    return;
+  }
+
   const rn=e.target.closest('[data-tpl-rename]');
   if(rn){
     const t=templates().find(x=>x.id===rn.dataset.tplRename); if(!t)return;
@@ -2624,29 +2806,29 @@ document.addEventListener('click', async (e)=>{
     if(name===null||!name.trim())return;
     t.name=name.trim(); saveConfig(); renderTemplates(); render(); return;
   }
+
   const del=e.target.closest('[data-tpl-del]');
   if(del){
     const t=templates().find(x=>x.id===del.dataset.tplDel); if(!t)return;
-    const yes=await askConfirm('删除模版「'+t.title_||t.name+'」？','以往记录不受影响。如果它正在使用，会退回「全部事项」。');
+    const yes=await askConfirm('删除模版「'+t.name+'」？','以往记录不受影响。如果它正在使用，会退回「全部事项」。');
     if(!yes)return;
     state.config.templates=templates().filter(x=>x.id!==t.id);
     if(activeTplId()===t.id) state.config.activeTpl='';
     editingTpl=''; saveConfig(); renderTemplates(); render();
     setStatus('已删除模版。'); return;
   }
+
   const nw=e.target.closest('#btnNewTpl');
   if(nw){
     const name=await askText('新模版名称','比如「附二每日清单」「居家每日清单」。','');
     if(name===null||!name.trim())return;
     const cur=activeTpl();
     const t=createTemplate(name.trim(), cur?(cur.off||[]):[]);
+    if(cur&&cur.t) t.t=clone(cur.t);
+    saveConfig();
     editingTpl=t.id; renderTemplates();
-    setStatus('已新建「'+t.name+'」，从当前模版复制而来，可以逐项勾掉不需要的。'); return;
+    setStatus('已新建「'+t.name+'」，从当前模版复制而来。'); return;
   }
-});
-document.addEventListener('change',(e)=>{
-  const cb=e.target.closest('[data-tpl-item]');
-  if(cb) toggleTplItem(cb.dataset.tplItem, cb.value);
 });
 </script>
 
