@@ -507,7 +507,7 @@ body.export-open > :not(#exportView){display:none!important}
     <button class="nav-top" id="btnBackTop" type="button">回到顶部</button>
   </nav>
 
-  <div class="status sync-status"><span id="syncStatus" role="status">已同步 · 家人可共同记录</span><button class="btn" id="btnSyncRetry" type="button" hidden="">重试</button></div>
+  <div class="status sync-status"><span id="syncStatus" role="status">已同步 · 家人可共同记录</span><button class="btn" id="btnSyncCfg" type="button">同步设置</button><button class="btn" id="btnSyncRetry" type="button" hidden="">重试</button></div>
   <div class="status" id="status"></div>
   <div class="toolbar sync-tools">
     <span class="today-reminders" id="todayReminderActions">
@@ -758,7 +758,12 @@ const defaultConfig=clone(state.config);
 let sharedDoc={days:{},config:{},vitals:{}}, cloudReady=false, cloudBusy=false, pullBusy=false;
 let pending=LS.get("care.shared.pending.v2")||{}, inFlight=LS.get("care.shared.inflight.v2")||null;
 let queueTimer=null, remoteMap={}, pendingSerial=Date.now();
-function syncMessage(s,failed=false){const el=document.getElementById("syncStatus");if(el.textContent!==s)el.textContent=s;const retry=document.getElementById("btnSyncRetry");if(retry)retry.hidden=!failed;}
+function syncMessage(s,failed=false){
+  // 本地模式下绝不能显示"已同步"——会让人以为数据已经共享，实际只在本机
+  if(typeof localMode!=="undefined"&&localMode&&/已同步|共同记录/.test(s))s=localModeMsg||"本地模式 · 记录只存在这台手机上";
+  const el=document.getElementById("syncStatus");if(el.textContent!==s)el.textContent=s;
+  const retry=document.getElementById("btnSyncRetry");if(retry)retry.hidden=!failed;
+}
 function setAppEnabled(on){document.querySelector("main").inert=!on; document.getElementById("nowDone").disabled=!on;}
 function flatten(value,path=[],out={}){
   if(value && typeof value==="object" && !Array.isArray(value)){
@@ -824,39 +829,77 @@ function queueScope(path,value){
   if(Object.keys(pending).length){syncMessage("有修改待同步…");clearTimeout(queueTimer);queueTimer=setTimeout(flushCloud,300);}
 }
 const LOCAL_KEY="care.local.entries.v1";
+const GH_CFG_KEY="care.sync.github.v1";
 let localMode=false;
+let ghCfg=LS.get(GH_CFG_KEY)||{repo:"",token:""};
+let ghEtag=null, ghSha=null, ghCache=null;
+
 function localEntries(){return LS.get(LOCAL_KEY)||{};}
 function localApply(batch){
   const map=localEntries();
-  for(const op of (batch&&batch.ops)||[]){
-    if(op.delete)delete map[op.key]; else map[op.key]=op.value;
+  for(const op of (batch&&batch.ops)||[]){ if(op.delete)delete map[op.key]; else map[op.key]=op.value; }
+  LS.set(LOCAL_KEY,map); return {entries:map};
+}
+let localModeMsg="";
+function markLocal(msg){
+  localModeMsg=msg||"本地模式 · 记录只存在这台手机上";
+  if(!localMode){localMode=true;syncMessage(localModeMsg);}
+}
+const ghOn=()=>!!(ghCfg.repo&&ghCfg.token);
+const b64ToStr=b=>new TextDecoder().decode(Uint8Array.from(atob(String(b).replace(/\s/g,"")),c=>c.charCodeAt(0)));
+const strToB64=s=>{let bin="";for(const b of new TextEncoder().encode(s))bin+=String.fromCharCode(b);return btoa(bin);};
+const ghURL=()=>"https://api.github.com/repos/"+ghCfg.repo+"/contents/data.json";
+const ghHead=()=>({"Authorization":"Bearer "+ghCfg.token,"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"});
+
+async function ghRead(force){
+  const head=ghHead();
+  if(ghEtag&&!force)head["If-None-Match"]=ghEtag;
+  const r=await fetch(ghURL()+"?ref=main",{headers:head,cache:"no-store"});
+  if(r.status===304&&ghCache)return {entries:ghCache};
+  if(r.status===404){ghCache={};ghSha=null;return {entries:{}};}
+  if(r.status===401)throw new Error("同步令牌无效或已过期");
+  if(r.status===403)throw new Error("同步令牌没有权限");
+  if(!r.ok)throw new Error("读取失败 "+r.status);
+  const j=await r.json();
+  ghEtag=r.headers.get("etag");ghSha=j.sha;
+  let doc={};try{doc=JSON.parse(b64ToStr(j.content));}catch(e){}
+  ghCache=doc.entries||{};
+  return {entries:ghCache};
+}
+// 冲突不覆盖：拉最新 → 应用自己的改动 → 重提交
+async function ghWrite(ops){
+  for(let i=0;i<4;i++){
+    await ghRead(true);
+    const next=Object.assign({},ghCache);
+    for(const op of ops||[]){ if(op.delete)delete next[op.key]; else next[op.key]=op.value; }
+    const payload={message:"记录更新 "+new Date().toISOString().slice(0,16).replace("T"," "),
+      content:strToB64(JSON.stringify({entries:next})),branch:"main"};
+    if(ghSha)payload.sha=ghSha;
+    const r=await fetch(ghURL(),{method:"PUT",headers:ghHead(),body:JSON.stringify(payload)});
+    if(r.ok){const j=await r.json();ghSha=j.content.sha;ghEtag=null;ghCache=next;return {entries:next};}
+    if(r.status===409||r.status===422)continue;
+    const j=await r.json().catch(()=>({}));
+    throw new Error(j.message||("写入失败 "+r.status));
   }
-  LS.set(LOCAL_KEY,map);
-  return {entries:map};
+  throw new Error("冲突太频繁，稍后重试");
 }
-function markLocal(){
-  if(localMode)return;
-  localMode=true;
-  syncMessage("本地模式 · 记录只存在这台手机上");
-}
-// 后端连不上就退回本地，应用照常能用；接上 D1 之后这段兜底仍然管断网
+
+// 三条路：配了 GitHub 走云端；没配或连不上退回本地，应用照常能用
 async function cloudFetch(options={}){
-  if(localMode){
-    return options.method==="PATCH"
-      ? localApply(JSON.parse(options.body||"{}"))
-      : {entries:localEntries()};
-  }
-  const controller=new AbortController(),t=setTimeout(()=>controller.abort(),15000);
+  const localCall=()=>options.method==="PATCH"
+    ? localApply(JSON.parse(options.body||"{}")) : {entries:localEntries()};
+  if(!ghOn()){markLocal();return localCall();}
   try{
-    const response=await fetch("/api/care",{credentials:"same-origin",cache:"no-store",...options,signal:controller.signal});
-    if(!response.ok)throw new Error(response.status===401?"登录已失效":"连接不上");
-    return await response.json();
+    const out=options.method==="PATCH"
+      ? await ghWrite(JSON.parse(options.body||"{}").ops)
+      : await ghRead();
+    if(localMode){localMode=false;localModeMsg="";}
+    return out;
   }catch(e){
-    markLocal();
-    return options.method==="PATCH"
-      ? localApply(JSON.parse(options.body||"{}"))
-      : {entries:localEntries()};
-  }finally{clearTimeout(t);}
+    if(/令牌/.test(e.message)){markLocal(e.message+" · 已转本地模式");}
+    else markLocal("连不上云端 · 暂存本机，恢复后自动重试");
+    return localCall();
+  }
 }
 async function flushCloud(){
   if(cloudBusy||!cloudReady)return;
@@ -2231,6 +2274,25 @@ async function boot(){
 boot().catch(function(err){
   try{ window.__showErr && window.__showErr((err&&err.message)||String(err)); }catch(e){}
   try{ setStatus("启动时出错了，上面有提示。"); }catch(e){}
+});
+
+
+/* ============ 同步设置 ============ */
+document.getElementById("btnSyncCfg").addEventListener("click", async ()=>{
+  const repo=await askText("数据仓库","格式 用户名/仓库名，两台手机填一样的",ghCfg.repo||"SYQ1001/dc-9f2a-data");
+  if(repo===null)return;
+  const token=await askText("访问令牌","GitHub 细粒度令牌，只授权给数据仓库",ghCfg.token||"");
+  if(token===null)return;
+  ghCfg={repo:(repo||"").trim(),token:(token||"").trim()};
+  LS.set(GH_CFG_KEY,ghCfg);
+  ghEtag=null;ghSha=null;ghCache=null;localMode=false;
+  if(!ghOn()){markLocal();return;}
+  syncMessage("正在连接云端…");
+  try{
+    await syncPull(true);
+    await flushCloud();
+    syncMessage("已连上云端 · 家人可共同记录");
+  }catch(e){ syncMessage("连接失败："+(e.message||e)); }
 });
 </script>
 
