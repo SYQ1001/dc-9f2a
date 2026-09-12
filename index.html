@@ -863,9 +863,10 @@ function unflatten(map){
 }
 function configWire(config){
   const c=clone(config);delete c.autoShift;
+  c.templatesById=Object.fromEntries((c.templates||[]).map(t=>{const o=clone(t);o.offById=Object.fromEntries((o.off||[]).map(id=>[id,true]));delete o.off;return [o.id,o];}));delete c.templates;
   c.customById=Object.fromEntries((c.custom||[]).map(x=>[x.id,x]));delete c.custom;return c;
 }
-function configFromWire(c){return Object.assign(clone(defaultConfig),c,{custom:Object.values(c.customById||{}),autoShift:false});}
+function configFromWire(c){const templates=c.templatesById?Object.values(c.templatesById).map(t=>({...t,off:Object.keys(t.offById||{}).filter(id=>t.offById[id])})):c.templates||[];return Object.assign(clone(defaultConfig),c,{templates,custom:Object.values(c.customById||{}),autoShift:false});}
 function persistQueue(){if(!ghCfg.token||!sessionOpen)return false;const ok=LS.set(SYNC_STORE_KEY,{entries:remoteMap,pending,inFlight});if(ok&&!storageReadFailed)storageWarning="";return ok;}
 function persistCache(){if(!ghCfg.token)return false;hasCloudCache=true;return LS.set(CACHE_KEY,remoteMap);}
 function effectiveMap(){
@@ -889,6 +890,7 @@ function applyCloud(redraw=true){
   if(redraw && !editing()){
     if(cloudRedrawPending.today){
       render();syncAutoBtn();
+      if(!document.getElementById("viewTpl").hidden)renderTemplates();
       cloudRedrawPending.today=false;
     }
     if(cloudRedrawPending.records){
@@ -901,7 +903,7 @@ function applyCloud(redraw=true){
 function editing(){return !!document.activeElement?.matches("input,textarea,select")||!!document.querySelector(".dlg-mask")||document.body.classList.contains("export-open");}
 function queueScope(path,value,operation="record"){
   if(!cloudReady||!sessionOpen||!ghCfg.token)return;
-  const old=flatten(sharedDoc), next=flatten(value,path), prefix=JSON.stringify(path).slice(0,-1)+",";
+  const old=path[0]==="config"?effectiveMap():flatten(sharedDoc), next=flatten(value,path), prefix=JSON.stringify(path).slice(0,-1)+",";
   const keys=new Set([...Object.keys(old).filter(k=>k.startsWith(prefix)),...Object.keys(next)]);
   for(const k of keys){
     if(JSON.stringify(old[k])===JSON.stringify(next[k]))continue;
@@ -1046,8 +1048,8 @@ async function resolveSyncConflicts(){
       const conflict=syncConflicts[0],op=pending[conflict.key];
       if(!op){syncConflicts.shift();continue;}
       const label=conflictLabel(conflict.key);
-      const remote=conflict.remotePresent?conflictValue(conflict.remote):"未设置";
-      const local=op.delete?"清除这项设置":conflictValue(op.value);
+      const remote=conflict.remotePresent?conflictValue(conflict.remote,conflict.key):"未设置";
+      const local=op.delete?"清除这项设置":conflictValue(op.value,conflict.key);
       const choice=await dlgOpen({type:"choice",title:"选择要保留的修改",
         body:esc(label)+"<br>云端是："+esc(remote)+"<br>本机是："+esc(local),
         choices:["保留云端","保留本机"],cancel:"暂不处理"});
@@ -1071,18 +1073,24 @@ async function initStore(){
 function conflictLabel(key){
   const p=JSON.parse(key),field=p[p.length-1],config=p[0]==="config";
   const id=config?p[2]:(p[2]==="items"?p[3]:p[2]);
-  const it=(typeof allItems==="function"?allItems():[]).find(it=>it.id===id||it.ask===id);
+  if(config&&p[1]==="templatesById"){
+    const t=templates().find(t=>t.id===p[2]),item=ITEMS.find(i=>i.id===field)||(state.config.custom||[]).find(i=>i.id===field);
+    return '模版「'+(t?.name||'已删除模版')+'」的'+(p[3]==='t'?(itemNames()[field]||item?.title||'事项')+' 时间':p[3]==='offById'?(itemNames()[field]||item?.title||'事项')+' 移出状态':'名称');
+  }
+  if(config&&p[1]==='activeTpl')return '当前使用的模版';
+  if(config&&p[1]==='templates')return '旧版模版列表';
+  const it=id?(typeof allItems==="function"?allItems():[]).find(it=>it.id===id||it.ask===id):null;
   const names={drugs:"药名",bottles:"瓶数",ivDur:"每瓶时长",times:"计划时间",time:"时间",dur:"每瓶时长",bn:"瓶数",title:"名称",sub:"说明",note:"说明",t:"计划时间",date:"日期",kind:"类别",m:"测量类型"};
   const name=it?.title||"清单事项",label=names[config&&p[1]!=="customById"?p[1]:field]||"设置";
   return (config?"":p[1]+" · ")+name+" 的"+label;
 }
-function conflictValue(v){if(v===null||v===undefined||v==="")return "未设置";if(typeof v==="boolean")return v?"是":"否";if(Array.isArray(v))return v.map(conflictValue).join("、");if(typeof v==="object")return "已填写的设置";return String(v);}
+function conflictValue(v,key){if(key==='["config","activeTpl"]')return v?(templates().find(t=>t.id===v)?.name||"已删除的模版"):"全部事项";if(v===null||v===undefined||v==="")return "未设置";if(typeof v==="boolean")return v?"是":"否";if(Array.isArray(v))return v.map(conflictValue).join("、");if(typeof v==="object")return v.name||v.title||"设置内容";return String(v);}
 function loginMessage(text){document.getElementById("loginStatus").textContent=text;}
 function showLogin(message=""){
   sessionOpen=false;cloudReady=false;clearTimeout(queueTimer);
   document.getElementById("appView").hidden=true;document.getElementById("appView").inert=true;
   document.getElementById("loginView").hidden=false;
-  for(const id of ["timeline","trendBox","logTable","historyContent","historySummary","medList"]){document.getElementById(id).innerHTML="";}
+  for(const id of ["timeline","trendBox","logTable","historyContent","historySummary","medList","tplBody"]){document.getElementById(id).innerHTML="";}
   document.getElementById("exportView")?.remove();document.body.classList.remove("export-open");
   loginMessage(message);
 }
@@ -1140,7 +1148,7 @@ function customItemDate(c){
 function ensureCustomDates(){
   if(!cloudReady)return;
   for(const c of state.config.custom||[]){
-    if(!c||!/^[-a-zA-Z0-9_]+$/.test(c.id)||c.tpl||/^\d{4}-\d{2}-\d{2}$/.test(c.date||''))continue;
+    if(!c||!/^[-a-zA-Z0-9_]+$/.test(c.id)||c.tpl||c.tpls||/^\d{4}-\d{2}-\d{2}$/.test(c.date||''))continue;
     c.date=customItemDate(c);queueScope(['config','customById',c.id,'date'],c.date);
   }
 }
@@ -1159,18 +1167,19 @@ function customItems(date=state.date){
   return (state.config.custom||[]).filter(c=>{
     if(!c||!/^[a-zA-Z0-9_-]+$/.test(c.id))return false;
     if(!c.date){                                           // 长期事项跟着所属模版，也受模版排除影响
-      if(c.tpl && c.tpl!==activeTplId()) return false;
+      if(date!==null&&!customInTemplate(c,activeTplId()))return false;
       const t=activeTpl();
-      return !(t && (t.off||[]).includes(c.id));
+      return date===null||!(t && (t.off||[]).includes(c.id));
     }
     return date===null||customItemDate(c)===date;          // 临时事项只活当天
   }).map(c=>({
     id:c.id, t:c.t, ph:phaseOfTime(c.t), kind:["服药","测量","进食","护理","输液"].includes(c.kind)?c.kind:"服药",
     title:c.title, sub:c.sub||"", note:esc(c.note||""), custom:true,
-    m:c.m||null, ref:c.ref||null, refTxt:c.refTxt||"",
+    m:c.m||null, ref:c.ref||null, refTxt:c.refTxt||"", reOf:c.reOf||null,
     kcls: c.kind==="进食"?"k-meal":(c.kind==="输液"?"k-iv":"")
-  }));
+  })).map(tplPatch);
 }
+function customInTemplate(c,id){if(!id)return true;return c.tpls?!!c.tpls[id]:!c.tpl||c.tpl===id;}
 /* 模版覆盖层：时间按模版存，改名全局存。
    在 allItems 这一层套上，下游的 timeOf / titleOf / 渲染全部自动生效，
    不用去动 timeOf 里那套餐食联动的递归逻辑。 */
@@ -1624,7 +1633,7 @@ function activeTpl(){ return templates().find(t=>t.id===activeTplId()) || null; 
 function tplExcluded(id){ const t=activeTpl(); return !!(t && (t.off||[]).includes(id)); }
 function tplName(){ const t=activeTpl(); return t ? t.name : '全部事项'; }
 
-function newTplId(){ return 'tpl'+Date.now().toString(36); }
+function newTplId(){ return 'tpl'+crypto.randomUUID().replaceAll('-',''); }
 
 function createTemplate(name, off){
   state.config.templates = templates().concat([{id:newTplId(), name:name, off:(off||[]).slice()}]);
@@ -1920,8 +1929,8 @@ async function remeasure(srcId){
   const now=hhmmNow();
   const tt=await dlgOpen({type:'time',title:'几点测的？',body:'默认当前时间，可以改。',value:now});
   if(tt===null)return;
-  const baseTitle=(titleOf(src)||src.title||'测量').replace(/（第\s*\d+\s*次）\s*$/,'').trim();
-  const sameDay=customItems(state.date).filter(c=>c.reOf===srcId||c.title.startsWith(baseTitle));
+  const baseTitle=(titleOf(src)||src.title||'测量').replace(/（(?:第\s*\d+\s*次|加测\s*\d+)）\s*$/,'').trim();
+  const sameDay=customItems(state.date).filter(c=>c.reOf===srcId);
   state.config.custom=state.config.custom||[];
   state.config.custom.push({
     id:"r"+Date.now().toString(36), date:state.date, t:tt, kind:"测量",
@@ -2648,7 +2657,7 @@ function tplItemRows(t){
   const rows=ITEMS.filter(i=>!off.includes(i.id)).map(i=>pick(i.id,i));
   // 在本模版里新建的长期事项（不带日期的那种）
   for(const c of (state.config.custom||[])){
-    if(!c||c.date||c.tpl!==t.id||off.includes(c.id))continue;
+    if(!c||c.date||!customInTemplate(c,t.id)||off.includes(c.id))continue;
     rows.push(pick(c.id,c));
   }
   rows.sort((a,b)=>a.t.localeCompare(b.t));
@@ -2693,6 +2702,7 @@ function renderTemplates(){
           '</div></div>';
       }
       html+='<div class="tpl-acts">'+
+        (t.off||[]).map(id=>{const item=ITEMS.find(i=>i.id===id)||(state.config.custom||[]).find(i=>i.id===id);return item?'<button type="button" class="tpl-btn" data-tpl-restore="'+esc(t.id)+'|'+esc(id)+'">恢复 '+esc(itemNames()[id]||item.title)+'</button>':'';}).join('')+
         '<button type="button" class="tpl-btn" data-tpl-rename="'+esc(t.id)+'">模版改名</button>'+
         '<button type="button" class="tpl-btn danger" data-tpl-del="'+esc(t.id)+'">删除模版</button></div>'+
         '<div class="tpl-hint">左滑一条可以把它移出本模版，事项本身还在，随时能加回来。</div>';
@@ -2731,8 +2741,8 @@ document.addEventListener('pointerdown',(e)=>{
   const fg=e.target.closest('.swipe-fg'); if(!fg)return;
   if(e.target.closest('button'))return;            // 按钮自己响应，不抢
   const wrap=fg.parentElement;
-  if(wrap._raf){ cancelAnimationFrame(wrap._raf); wrap._raf=null; }  // 抓住飞行中的动画
-  wrap._startX=e.clientX; wrap._baseX=wrap._x||0; wrap._hist=[[e.clientX,performance.now()]];
+  if(fg._raf){ cancelAnimationFrame(fg._raf); fg._raf=null; }  // 抓住飞行中的动画
+  wrap._startX=e.clientX; wrap._baseX=fg._x??wrap._x??0; wrap._hist=[[e.clientX,performance.now()]];
   wrap._drag=false; wrap._pid=e.pointerId;
   fg.setPointerCapture(e.pointerId);
 },{passive:true});
@@ -2745,7 +2755,7 @@ document.addEventListener('pointermove',(e)=>{
   let x=wrap._baseX+dx;
   if(x>0) x=x*0.25;                                 // 往右是边界，给阻尼而不是硬停
   if(x<-SWIPE_W) x=-SWIPE_W-(-SWIPE_W-x)*0.35;
-  wrap._x=x; fg.style.transform='translateX('+x+'px)';
+  wrap._x=x; fg._x=x; fg.style.transform='translateX('+x+'px)';
   wrap._hist.push([e.clientX,performance.now()]);
   if(wrap._hist.length>6)wrap._hist.shift();
 },{passive:true});
@@ -2754,7 +2764,8 @@ function endSwipe(e){
   const fg=e.target.closest('.swipe-fg'); if(!fg)return;
   const wrap=fg.parentElement; if(wrap._pid!==e.pointerId||wrap._startX===undefined)return;
   wrap._startX=undefined;
-  if(!wrap._drag){ wrap._drag=false; return; }
+  if(e.type==='pointercancel'){wrap._drag=false;wrap._pid=null;wrap._x=0;springTo(fg,fg._x||0,0,0);return;}
+  if(!wrap._drag){wrap._drag=false;wrap._x=0;springTo(fg,fg._x||0,0,0);return;}
   const h=wrap._hist, a=h[0], b=h[h.length-1];
   const span=b[1]-a[1];
   // 时间跨度太短时算出的速度不可信（几毫秒内的抖动会得到几千 px/s）
@@ -2778,6 +2789,8 @@ document.addEventListener('pointercancel',endSwipe);
 
 /* ---------- 模版页按钮 ---------- */
 document.addEventListener('click', async (e)=>{
+  const restore=e.target.closest('[data-tpl-restore]');
+  if(restore){const [tid,id]=restore.dataset.tplRestore.split('|');const t=templates().find(z=>z.id===tid);if(!t)return;t.off=(t.off||[]).filter(x=>x!==id);saveConfig();renderTemplates();render();return;}
   const use=e.target.closest('[data-tpl-use]');
   if(use){ switchTemplate(use.dataset.tplUse); renderTemplates(); return; }
 
@@ -2786,7 +2799,7 @@ document.addEventListener('click', async (e)=>{
 
   const ren=e.target.closest('[data-tpl-ren]');
   if(ren){
-    const id=ren.dataset.tplRen, base=ITEMS.find(i=>i.id===id);
+    const id=ren.dataset.tplRen, base=ITEMS.find(i=>i.id===id)||(state.config.custom||[]).find(i=>i.id===id);
     const cur=(itemNames()[id]!==undefined)?itemNames()[id]:(base?base.title:'');
     const name=await askText('重命名事项','改名对所有模版生效。以往记录不受影响，仍显示当时的名字。',cur);
     if(name===null)return;
@@ -2798,10 +2811,11 @@ document.addEventListener('click', async (e)=>{
   if(tm){
     const [tid,iid]=tm.dataset.tplTime.split('|');
     const t=templates().find(z=>z.id===tid); if(!t)return;
-    const cur=(t.t&&t.t[iid])||((ITEMS.find(i=>i.id===iid)||{}).t)||'00:00';
+    const cur=(t.t&&t.t[iid])||((ITEMS.find(i=>i.id===iid)||(state.config.custom||[]).find(i=>i.id===iid)||{}).t)||'00:00';
     const v=await dlgOpen({type:'time',title:'几点做？',body:'只改这个模版，其他模版不受影响。',value:cur});
-    if(v===null)return;
-    t.t=t.t||{}; t.t[iid]=v; saveConfig(); renderTemplates();
+    if(v===null||!sessionOpen)return;
+    const current=templates().find(z=>z.id===tid);if(!current){setStatus('模版已被删除，未保存修改。');return;}
+    current.t=current.t||{}; current.t[iid]=v; saveConfig(); renderTemplates();
     if(tid===activeTplId())render();
     return;
   }
@@ -2811,7 +2825,7 @@ document.addEventListener('click', async (e)=>{
     const t=templates().find(z=>z.id===add.dataset.tplAdd); if(!t)return;
     const presets={'测体温':'体温','测血糖':'血糖','测血压':'血压 / 心率','测血氧':'血氧'};
     const title=await dlgOpen({type:'input',title:'新建事项',
-      body:'加进「'+t.name+'」，以后每天都会出现。只做一次的用「今天」页的添加事项。',
+      body:'加进「'+esc(t.name)+'」，以后每天都会出现。只做一次的用「今天」页的添加事项。',
       presets:Object.keys(presets),value:''});
     if(title===null||!title.trim())return;
     const tt=await dlgOpen({type:'time',title:'几点做？',body:'点时间选择小时和分钟。',value:'08:00'});
@@ -2825,7 +2839,8 @@ document.addEventListener('click', async (e)=>{
       '血糖':{m:'bg',ref:[3.9,10.0],refTxt:'参考 3.9–10.0'},
       '血压 / 心率':{m:'bp',refTxt:'血压 < 140/90'},'血氧':{m:'spo2',refTxt:'血氧 ≥ 95%'}}[metric]||{};
     const sub=await askText('补充说明（可留空）','怎么做、注意什么，写给陪护看。','');
-    if(sub===null)return;
+    if(sub===null||!sessionOpen)return;
+    if(!templates().some(z=>z.id===t.id)){setStatus('模版已被删除，未添加事项。');return;}
     // 长期事项：不带 date，每天都刷新出来；临时加测那种是带 date 的
     state.config.custom=state.config.custom||[];
     state.config.custom.push(Object.assign({
@@ -2840,9 +2855,10 @@ document.addEventListener('click', async (e)=>{
   const rn=e.target.closest('[data-tpl-rename]');
   if(rn){
     const t=templates().find(x=>x.id===rn.dataset.tplRename); if(!t)return;
-    const name=await askText('模版名称','比如「省一每日清单」「居家每日清单」。',t.name);
+    const name=await askText('模版名称','比如「日常照护清单」「居家每日清单」。',t.name);
     if(name===null||!name.trim())return;
-    t.name=name.trim(); saveConfig(); renderTemplates(); render(); return;
+    const current=templates().find(z=>z.id===t.id);if(!current||!sessionOpen)return;
+    current.name=name.trim(); saveConfig(); renderTemplates(); render(); return;
   }
 
   const del=e.target.closest('[data-tpl-del]');
@@ -2858,11 +2874,14 @@ document.addEventListener('click', async (e)=>{
 
   const nw=e.target.closest('#btnNewTpl');
   if(nw){
-    const name=await askText('新模版名称','比如「附二每日清单」「居家每日清单」。','');
+    const name=await askText('新模版名称','比如「日常照护清单」「居家每日清单」。','');
     if(name===null||!name.trim())return;
     const cur=activeTpl();
     const t=createTemplate(name.trim(), cur?(cur.off||[]):[]);
-    if(cur&&cur.t) t.t=clone(cur.t);
+    if(cur&&cur.t)t.t=clone(cur.t);
+    for(const c of state.config.custom||[]){if(c.date||!customInTemplate(c,cur?.id||''))continue;
+      c.tpls=c.tpls||(c.tpl?{[c.tpl]:true}:Object.fromEntries(['',...templates().map(t=>t.id)].map(id=>[id,true])));c.tpls[t.id]=true;
+    }
     saveConfig();
     editingTpl=t.id; renderTemplates();
     setStatus('已新建「'+t.name+'」，从当前模版复制而来。'); return;
@@ -2872,3 +2891,4 @@ document.addEventListener('click', async (e)=>{
 
 
 </body></html>
+
