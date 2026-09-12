@@ -1285,7 +1285,14 @@ function linkLabel(it){
   const off = h ? (h+" 小时"+(m?m+" 分":"")) : (m+" 分钟");
   return "跟着「"+src.title.replace(/ · .*/,"")+"」后 "+off;
 }
-function ordered(){ return allItems().slice().sort((a,b)=> mins(timeOf(a))-mins(timeOf(b))); }
+/* 从模版移除的事项要彻底不出现，而不是画成灰色的「停用中」——
+   那个样式是给暂停用药（比如抗病毒期间停的他汀）留的，两者含义不同。 */
+function tplHidden(it){
+  const t=activeTpl(); if(!t) return false;
+  if((t.off||[]).includes(it.id)) return true;
+  return false;
+}
+function ordered(){ return allItems().filter(i=>!tplHidden(i)).slice().sort((a,b)=> mins(timeOf(a))-mins(timeOf(b))); }
 
 /* ---- 自动顺延：改一项后，标准顺序中排在其后的项一起平移 ---- */
 function shiftFollowing(id, delta){
@@ -1637,14 +1644,14 @@ function toggleTplItem(tplId, itemId){
   saveConfig(); renderTemplates(); if(t.id===activeTplId()) render();
 }
 
-function isOff(it){ return isPaused(it) || isSkipped(it) || (!it.custom && tplExcluded(it.id)); }
+function isOff(it){ return isPaused(it) || isSkipped(it); }
 function setSkip(id, v){
   const r = rec(id);
   if(v){ r.skip = true; r.done = false; delete r.at; }
   else { delete r.skip; } saveDay("status"); render();
   setStatus(v ? "已标记为今天跳过，不再计入待办。" : "已恢复，重新计入今天的清单。");
 }
-function activeItems(){ return allItems().filter(i=>!isOff(i)); }
+function activeItems(){ return ordered().filter(i=>!isOff(i)); }
 function setPause(id, v){
   state.config.pause = state.config.pause || {};
   if(v) state.config.pause[id] = "on"; else state.config.pause[id] = "off";
