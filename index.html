@@ -487,11 +487,20 @@ body.export-open > :not(#exportView){display:none!important}
 </style>
 </head>
 <body>
-
-<div class="wrap">
+<section id="loginView" class="wrap" style="max-width:440px;padding-top:12vh" aria-labelledby="loginTitle">
+  <h1 id="loginTitle">每日照护清单</h1>
+  <p>请输入同步令牌，验证通过后查看和记录。令牌仅保存在当前浏览器；已登录设备断网时可使用云端缓存。</p>
+  <form id="loginForm">
+    <label for="loginToken">同步令牌</label>
+    <input id="loginToken" type="password" autocomplete="off" autocapitalize="none" spellcheck="false" style="display:block;width:100%;padding:12px;margin:10px 0;border:1px solid var(--line-2);border-radius:10px;background:var(--surface);color:var(--ink)">
+    <div class="toolbar"><button class="btn" id="loginPaste" type="button">粘贴</button><button class="btn" id="loginClear" type="button">清空</button><button class="btn btn-primary" id="loginEnter" type="submit">进入</button></div>
+    <p id="loginStatus" role="status" aria-live="polite"></p>
+  </form>
+</section>
+<div class="wrap" id="appView" hidden inert>
   <header class="masthead">
     <div>
-      <div class="dept">云南省第一人民医院东院 · 呼吸与危重症医学科</div>
+      <div class="dept">每日照护 · 记录与查看</div>
       <h1>住院一日清单</h1>
       <div class="datestr" id="dateStr"></div>
     </div>
@@ -750,6 +759,7 @@ let storageWarning="", storageReadFailed=false;
 const LS = {
   get(k){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch(e){storageReadFailed=true;storageWarning="本机缓存读取失败，请勿清理浏览器数据；先备份记录";return null;} },
   set(k,v){ try{localStorage.setItem(k,JSON.stringify(v));return true;}catch(e){storageWarning="本机保存失败，未上传的修改仅在当前页面；请勿关闭，先联网同步或导出备份";return false;} },
+  remove(k){try{localStorage.removeItem(k);return true;}catch(e){storageWarning="本机数据清理失败，请重试退出";return false;}},
 };
 
 const state = {
@@ -762,11 +772,15 @@ const clone=x=>JSON.parse(JSON.stringify(x));
 const defaultConfig=clone(state.config);
 let sharedDoc={days:{},config:{},vitals:{}}, cloudReady=false, cloudBusy=false, pullBusy=false;
 const SYNC_STORE_KEY="care.shared.sync.v3";
-const savedSync=LS.get(SYNC_STORE_KEY);
-let pending=savedSync?.pending||LS.get("care.shared.pending.v2")||{};
-let inFlight=savedSync?savedSync.inFlight:LS.get("care.shared.inflight.v2");
-let queueTimer=null, remoteMap=savedSync?.entries||LS.get("care.shared.cache.v2")||{}, pendingSerial=Date.now();
-let syncConflicts=[], syncSettingsBusy=false;
+const GH_CFG_KEY="care.sync.github.v1", CACHE_KEY="care.shared.cache.v2";
+let ghCfg=LS.get(GH_CFG_KEY)||{token:""};
+const savedSync=ghCfg.token?LS.get(SYNC_STORE_KEY):null;
+const savedCache=ghCfg.token?LS.get(CACHE_KEY):null;
+let pending=ghCfg.token?(savedSync?.pending||LS.get("care.shared.pending.v2")||{}):{};
+let inFlight=ghCfg.token?(savedSync?savedSync.inFlight:LS.get("care.shared.inflight.v2")):null;
+let queueTimer=null, remoteMap=savedSync?.entries||savedCache||{}, pendingSerial=Date.now();
+let syncConflicts=[], syncSettingsBusy=false, sessionOpen=false, offline=false;
+let hasCloudCache=!!(savedCache||savedSync?.entries&&Object.keys(savedSync.entries).length);
 // 同一份本机快照原子保存缓存、队列和批次；旧键保留，不删除历史副本。
 for(const op of inFlight?.ops||[]){if(!pending[op.key]||pending[op.key].serial<op.serial){const {key,...p}=op;pending[key]=p;}}
 for(const p of Object.values(pending))pendingSerial=Math.max(pendingSerial,Number(p.serial)||0);
@@ -799,7 +813,8 @@ function configWire(config){
   c.customById=Object.fromEntries((c.custom||[]).map(x=>[x.id,x]));delete c.custom;return c;
 }
 function configFromWire(c){return Object.assign(clone(defaultConfig),c,{custom:Object.values(c.customById||{}),autoShift:false});}
-function persistQueue(){const ok=LS.set(SYNC_STORE_KEY,{entries:remoteMap,pending,inFlight});if(ok&&!storageReadFailed)storageWarning="";return ok;}
+function persistQueue(){if(!ghCfg.token||!sessionOpen)return false;const ok=LS.set(SYNC_STORE_KEY,{entries:remoteMap,pending,inFlight});if(ok&&!storageReadFailed)storageWarning="";return ok;}
+function persistCache(){if(!ghCfg.token)return false;hasCloudCache=true;return LS.set(CACHE_KEY,remoteMap);}
 function effectiveMap(){
   const map=clone(remoteMap);
   for(const [k,p] of Object.entries(pending)){if(p.delete)delete map[k];else map[k]=p.value;}
@@ -831,8 +846,8 @@ function applyCloud(redraw=true){
   }
 }
 function editing(){return !!document.activeElement?.matches("input,textarea,select")||!!document.querySelector(".dlg-mask")||document.body.classList.contains("export-open");}
-function queueScope(path,value){
-  if(!cloudReady){syncMessage("尚未连接共享记录，请点「重试」。",true);return;}
+function queueScope(path,value,operation="record"){
+  if(!cloudReady||!sessionOpen||!ghCfg.token)return;
   const old=flatten(sharedDoc), next=flatten(value,path), prefix=JSON.stringify(path).slice(0,-1)+",";
   const keys=new Set([...Object.keys(old).filter(k=>k.startsWith(prefix)),...Object.keys(next)]);
   for(const k of keys){
@@ -840,20 +855,19 @@ function queueScope(path,value){
     const previous=pending[k];
     const base=previous&&Object.hasOwn(previous,'basePresent')?{basePresent:previous.basePresent,...(previous.basePresent?{base:clone(previous.base)}:{})}:{basePresent:Object.hasOwn(remoteMap,k),...(Object.hasOwn(remoteMap,k)?{base:clone(remoteMap[k])}:{})};
     pending[k]=next[k]===undefined?{delete:true,serial:++pendingSerial,...base}:{value:clone(next[k]),serial:++pendingSerial,...base};
+    if(operation==="status")pending[k].policy="last-write";
   }
   sharedDoc=unflatten(effectiveMap());sharedDoc.config=configWire(configFromWire(sharedDoc.config));persistQueue();
-  if(Object.keys(pending).length){syncMessage("有修改待同步…");clearTimeout(queueTimer);queueTimer=setTimeout(flushCloud,SYNC_DEBOUNCE_MS);}
+  if(Object.keys(pending).length){queueStatus();clearTimeout(queueTimer);queueTimer=setTimeout(flushCloud,SYNC_DEBOUNCE_MS);}
 }
-const GH_CFG_KEY="care.sync.github.v1";
 const GH_REPO="SYQ1001/dc-9f2a-data";
-let ghCfg=LS.get(GH_CFG_KEY)||{token:""};
 if(ghCfg&&ghCfg.repo)delete ghCfg.repo;
 let ghEtag=null, ghSha=null, ghCache=null;
 const ghOn=()=>!!ghCfg.token;
 const b64ToStr=b=>new TextDecoder("utf-8",{fatal:true}).decode(Uint8Array.from(atob(String(b).replace(/\s/g,"")),c=>c.charCodeAt(0)));
 const strToB64=s=>{let bin="";for(const b of new TextEncoder().encode(s))bin+=String.fromCharCode(b);return btoa(bin);};
 const ghURL=()=>"https://api.github.com/repos/"+GH_REPO+"/contents/data.json";
-const ghHead=()=>({"Authorization":"Bearer "+ghCfg.token,"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"});
+const ghHead=(token=ghCfg.token)=>({"Authorization":"Bearer "+token,"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"});
 const sameValue=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 function validateEntries(entries){
   if(!entries||typeof entries!=="object"||Array.isArray(entries))throw new Error("云端数据结构无效，已停止写入");
@@ -868,13 +882,14 @@ function validateEntries(entries){
 async function ghRequest(url,options={}){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
   try{return await fetch(url,{...options,signal:controller.signal});}
-  catch(e){throw new Error(e.name==="AbortError"?"同步请求超时":"网络连接失败");}
+  catch(e){offline=true;throw new Error(e.name==="AbortError"?"网络请求超时":"网络不通，请检查连接");}
   finally{clearTimeout(timer);}
 }
-async function ghRead(force=false){
-  const head=ghHead();
+async function ghRead(force=false,token=ghCfg.token){
+  const head=ghHead(token);
   if(ghEtag&&!force)head["If-None-Match"]=ghEtag;
   const r=await ghRequest(ghURL()+"?ref=main",{headers:head,cache:"no-store"});
+  offline=false;
   if(r.status===304&&ghCache)return {entries:ghCache};
   // 私有仓库无权限也可能返回 404，绝不能自动当成空文件创建。
   if(r.status===404)throw new Error("找不到数据文件或没有访问权限，请核对令牌及 main/data.json");
@@ -891,6 +906,12 @@ async function ghRead(force=false){
   return {entries};
 }
 function opMatches(map,op){return op.delete?!Object.hasOwn(map,op.key):Object.hasOwn(map,op.key)&&sameValue(map[op.key],op.value);}
+function needsConflict(op){
+  const p=JSON.parse(op.key),field=p[p.length-1];
+  if(op.policy==="last-write"||p.includes("snapshot")||["done","skip","at"].includes(field))return false;
+  if(p[0]==="config")return p[1]!=="pause";
+  return ["time","dur","bn","bottles","title","sub","note","drug","name"].includes(field);
+}
 async function ghWrite(ops){
   for(let i=0;i<4;i++){
     await ghRead(true);
@@ -900,7 +921,7 @@ async function ghWrite(ops){
       const present=Object.hasOwn(ghCache,op.key);
       const unchanged=Object.hasOwn(op,"basePresent")&&present===op.basePresent&&(!present||sameValue(ghCache[op.key],op.base));
       // 旧队列没有基线：不能猜测是否覆盖了家人的修改。
-      if(!unchanged)conflicts.push({key:op.key,serial:op.serial,remotePresent:present,...(present?{remote:clone(ghCache[op.key])}:{})});
+      if(!unchanged&&needsConflict(op))conflicts.push({key:op.key,serial:op.serial,remotePresent:present,...(present?{remote:clone(ghCache[op.key])}:{})});
     }
     if(conflicts.length){syncConflicts=conflicts;throw new Error("发现同一字段的不同修改，请点「处理冲突」选择；修改仍在待同步队列");}
     if(ops.every(op=>opMatches(ghCache,op)))return {entries:ghCache};
@@ -920,14 +941,14 @@ async function ghWrite(ops){
 }
 function queueStatus(error){
   const count=Object.keys(pending).length;
-  const message=error?(error.message||String(error))+" · "+(count?"修改待上传，当前显示缓存与本机修改":"当前显示上次缓存"):
+  const message=offline?(count?"离线，改动已暂存 · 联网后自动上传":"离线，正在显示云端缓存")+(error?" · "+error.message:""):error?(error.message||String(error))+" · "+(count?"修改待上传，当前显示缓存与本机修改":"当前显示上次缓存"):
     !ghOn()?"未设置同步令牌 · "+(count?"修改待上传":"当前显示本机缓存"):
     count?"有修改待同步…":"已同步 · 家人可共同记录";
-  syncMessage(message,!!error||!ghOn()||!!syncConflicts.length);
+  syncMessage(message,!!error||offline||!ghOn()||!!syncConflicts.length);
   const retry=document.getElementById("btnSyncRetry");if(retry)retry.textContent=syncConflicts.length?"处理冲突":"重试";
 }
 async function flushCloud(){
-  if(cloudBusy||pullBusy||syncSettingsBusy||!cloudReady)return;
+  if(cloudBusy||pullBusy||syncSettingsBusy||!cloudReady||!sessionOpen)return;
   if(!ghOn()||syncConflicts.length){queueStatus(syncConflicts.length?new Error("同一字段存在冲突，请选择保留内容"):null);return;}
   cloudBusy=true;
   try{
@@ -943,65 +964,115 @@ async function flushCloud(){
         if(latest.serial===op.serial)delete pending[op.key];
         else{latest.basePresent=!op.delete;if(op.delete)delete latest.base;else latest.base=clone(op.value);}
       }
-      inFlight=null;remoteMap=clone(result.entries);persistQueue();applyCloud();
+      inFlight=null;remoteMap=clone(result.entries);persistQueue();persistCache();applyCloud();
     }
     queueStatus();
   }catch(e){persistQueue();queueStatus(e);}
   finally{cloudBusy=false;}
 }
 async function syncPull(force=false){
-  if(pullBusy||cloudBusy||syncSettingsBusy||(!force&&editing()))return;
+  if(pullBusy||cloudBusy||syncSettingsBusy||!sessionOpen||(!force&&editing()))return;
   if(inFlight||Object.keys(pending).length){await flushCloud();if(inFlight||Object.keys(pending).length)return;}
   if(!ghOn()){queueStatus();return;}
   pullBusy=true;
   if(force)syncMessage("同步中…");
   try{
     const result=await ghRead(force);remoteMap=clone(result.entries);
-    persistQueue();applyCloud();ensureDaySnapshot();queueStatus();
+    persistQueue();persistCache();applyCloud();ensureDaySnapshot();queueStatus();
   }catch(e){queueStatus(e);}
   finally{pullBusy=false;}
   if(inFlight||Object.keys(pending).length)flushCloud();
 }
 async function resolveSyncConflicts(){
   if(cloudBusy||pullBusy||syncSettingsBusy)return;
-  syncSettingsBusy=true;setAppEnabled(false);
+  syncSettingsBusy=true;
   try{
     // 先撤回尚未确认的批次，保留所有操作到 pending；重建批次时才应用用户选择。
     inFlight=null;persistQueue();
     while(syncConflicts.length){
       const conflict=syncConflicts[0],op=pending[conflict.key];
       if(!op){syncConflicts.shift();continue;}
-      const path=JSON.parse(conflict.key).join(" / ");
-      const remote=conflict.remotePresent?JSON.stringify(conflict.remote):"（已删除 / 尚无记录）";
-      const local=op.delete?"（删除）":JSON.stringify(op.value);
+      const label=conflictLabel(conflict.key);
+      const remote=conflict.remotePresent?conflictValue(conflict.remote):"未设置";
+      const local=op.delete?"清除这项设置":conflictValue(op.value);
       const choice=await dlgOpen({type:"choice",title:"选择要保留的修改",
-        body:esc(path)+"<br>云端："+esc(remote)+"<br>本机："+esc(local),
+        body:esc(label)+"<br>云端是："+esc(remote)+"<br>本机是："+esc(local),
         choices:["保留云端","保留本机"],cancel:"暂不处理"});
       if(choice===null)return;
+      if(pending[conflict.key]?.serial!==op.serial){syncConflicts.shift();continue;}
       if(choice==="保留云端"){delete pending[conflict.key];}
       else{op.basePresent=conflict.remotePresent;if(conflict.remotePresent)op.base=clone(conflict.remote);else delete op.base;}
       if(conflict.remotePresent)remoteMap[conflict.key]=clone(conflict.remote);else delete remoteMap[conflict.key];
       syncConflicts.shift();persistQueue();applyCloud();
     }
-  }finally{syncSettingsBusy=false;setAppEnabled(true);queueStatus(syncConflicts.length?new Error("仍有冲突待处理"):null);}
+  }finally{syncSettingsBusy=false;queueStatus(syncConflicts.length?new Error("仍有冲突待处理"):null);}
   await flushCloud();await syncPull(true);
 }
 async function initStore(){
-  if(storageReadFailed)throw new Error(storageWarning);
-  validateEntries(remoteMap);
-  cloudReady=true;applyCloud();setAppEnabled(true);persistQueue();
-  // 离线启动只恢复已有缓存与队列，不自动生成并上传一整天空快照。
-  await syncPull(true);
+  showLogin();
+  if(!ghOn())return;
+  if(storageReadFailed){loginMessage(storageWarning);return;}
+  if(hasCloudCache){validateEntries(remoteMap);openSession();await syncPull(true);}
+  else if(await loginWithToken(ghCfg.token))await flushCloud();
+}
+function conflictLabel(key){
+  const p=JSON.parse(key),field=p[p.length-1],config=p[0]==="config";
+  const id=config?p[2]:(p[2]==="items"?p[3]:p[2]);
+  const it=(typeof allItems==="function"?allItems():[]).find(it=>it.id===id||it.ask===id);
+  const names={drugs:"药名",bottles:"瓶数",ivDur:"每瓶时长",times:"计划时间",time:"时间",dur:"每瓶时长",bn:"瓶数",title:"名称",sub:"说明",note:"说明",t:"计划时间",date:"日期",kind:"类别",m:"测量类型"};
+  const name=it?.title||"清单事项",label=names[config&&p[1]!=="customById"?p[1]:field]||"设置";
+  return (config?"":p[1]+" · ")+name+" 的"+label;
+}
+function conflictValue(v){if(v===null||v===undefined||v==="")return "未设置";if(typeof v==="boolean")return v?"是":"否";if(Array.isArray(v))return v.map(conflictValue).join("、");if(typeof v==="object")return "已填写的设置";return String(v);}
+function loginMessage(text){document.getElementById("loginStatus").textContent=text;}
+function showLogin(message=""){
+  sessionOpen=false;cloudReady=false;clearTimeout(queueTimer);
+  document.getElementById("appView").hidden=true;document.getElementById("appView").inert=true;
+  document.getElementById("loginView").hidden=false;
+  for(const id of ["timeline","trendBox","logTable","historyContent","historySummary","medList"]){document.getElementById(id).innerHTML="";}
+  document.getElementById("exportView")?.remove();document.body.classList.remove("export-open");
+  loginMessage(message);
+}
+function openSession(){
+  sessionOpen=true;cloudReady=true;state.date=todayKey();applyCloud(false);
+  document.getElementById("loginView").hidden=true;
+  document.getElementById("loginToken").value="";
+  document.getElementById("appView").hidden=false;document.getElementById("appView").inert=false;
+  document.getElementById("medList").innerHTML=MEDS.map(m=>'<div class="med"><h4>'+esc(m.n)+'</h4><div class="gen">'+esc(m.g)+'</div><ul>'+m.pts.map(p=>"<li>"+p+"</li>").join("")+'</ul></div>').join("");
+  setAppEnabled(true);stamp();switchView("today");render();
+}
+async function loginWithToken(value){
+  const token=String(value||"").trim();
+  if(!token){loginMessage("请填写同步令牌");return false;}
+  if(cloudBusy||pullBusy||syncSettingsBusy)return false;
+  syncSettingsBusy=true;document.getElementById("loginEnter").disabled=true;loginMessage("正在验证令牌…");
+  try{
+    const result=await ghRead(true,token);
+    if(!LS.set(GH_CFG_KEY,{token}))throw new Error("令牌未能保存在本机，请检查浏览器存储设置");
+    ghCfg={token};remoteMap=clone(result.entries);openSession();persistQueue();persistCache();queueStatus();
+    return true;
+  }catch(e){if(!sessionOpen)loginMessage(e.message);else queueStatus(e);return false;}
+  finally{syncSettingsBusy=false;document.getElementById("loginEnter").disabled=false;}
+}
+async function logout(){
+  if(cloudBusy||pullBusy)return false;
+  const count=new Set([...Object.keys(pending),...(inFlight?.ops||[]).map(op=>op.key)]).size;
+  if(count&&!await askConfirm("退出登录","还有 "+count+" 条修改没有上传，退出会丢失，确定吗？",{ok:"退出并丢弃",danger:true}))return false;
+  const keys=[SYNC_STORE_KEY,CACHE_KEY,"care.shared.pending.v2","care.shared.inflight.v2","care.local.entries.v1",GH_CFG_KEY];
+  for(const key of keys){if(!LS.remove(key)){persistQueue();queueStatus(new Error("退出未完成，本机数据未能清理，请重试"));return false;}}
+  ghCfg={token:""};remoteMap={};pending={};inFlight=null;ghCache=null;ghEtag=null;ghSha=null;syncConflicts=[];hasCloudCache=false;offline=false;
+  state.items={};state.config=clone(defaultConfig);sharedDoc={days:{},config:{},vitals:{}};storageWarning="";storageReadFailed=false;
+  showLogin("已退出，当前浏览器的缓存和待上传修改已清除");return true;
 }
 async function loadDay(dateKey){state.items=clone(sharedDoc.days[dateKey]?.items||{});}
 async function loadConfig(){state.config=configFromWire(sharedDoc.config||{});}
-function saveDay(){
+function saveDay(operation="record"){
   if(!cloudReady)return;
   for(const it of allItems()){
     const r=state.items[it.id]||(state.items[it.id]={});
     r.snapshot={title:titleOf(it),kind:it.kind||'',m:it.m||'',custom:!!it.custom,iv:!!it.iv,meal:!!it.meal,time:waitingMeal(it)?'':timeOf(it),paused:!!isPaused(it)};
   }
-  queueScope(["days",state.date,"items"],state.items);
+  queueScope(["days",state.date,"items"],state.items,operation);
 }
 function customItemDate(c){
   if(/^\d{4}-\d{2}-\d{2}$/.test(c.date||''))return c.date;
@@ -1282,7 +1353,7 @@ const automaticHtml=new WeakMap();
 function updateAutomaticHtml(el,html){
   if(el&&automaticHtml.get(el)!==html){el.innerHTML=html;automaticHtml.set(el,html);}
 }
-function render(){ try{ return render_(); }catch(e){ try{ window.__showErr && window.__showErr("画清单时出错："+e.message); }catch(_){} } }
+function render(){if(!sessionOpen)return;try{ return render_(); }catch(e){ try{ window.__showErr && window.__showErr("画清单时出错："+e.message); }catch(_){} } }
 function render_(){
   const expanded=new Set([...document.querySelectorAll('#timeline [data-row] details.more[open]')].map(el=>el.closest('[data-row]').dataset.row));
   const cur = nowMins();
@@ -1431,7 +1502,7 @@ function isOff(it){ return isPaused(it) || isSkipped(it); }
 function setSkip(id, v){
   const r = rec(id);
   if(v){ r.skip = true; r.done = false; delete r.at; }
-  else { delete r.skip; } saveDay(); render();
+  else { delete r.skip; } saveDay("status"); render();
   setStatus(v ? "已标记为今天跳过，不再计入待办。" : "已恢复，重新计入今天的清单。");
 }
 function activeItems(){ return allItems().filter(i=>!isOff(i)); }
@@ -1507,7 +1578,7 @@ function toggle(id){
   const r = rec(id);
   if(r.done){ r.done=false; delete r.at; }
   else { const it=itemById(id);r.time=waitingMeal(it)?hhmmNow():timeOf(it); r.done=true; r.at=r.time; }
-  saveDay(); render();
+  saveDay("status"); render();
 }
 
 document.addEventListener("click", (e)=>{
@@ -1650,6 +1721,7 @@ document.addEventListener("input", (e)=>{
 });
 
 function switchView(v){
+  if(!sessionOpen)return;
   if(!['today','trend','history','meds'].includes(v))return;
   document.querySelectorAll(".tab").forEach(b=>{const active=b.dataset.view===v;b.setAttribute("aria-selected",String(active));b.tabIndex=active||(v==='meds'&&b.dataset.view==='today')?0:-1;});
   $("#viewToday").hidden = v!=="today";
@@ -2062,10 +2134,12 @@ trendTable.addEventListener('keydown',e=>{
   const row=e.target.closest('[data-summary-date]');if(row&&['Enter',' '].includes(e.key)){e.preventDefault();selectTrendRow(row.dataset.summaryDate);}
 });
 async function renderTrend({focusToday=false}={}){
+  if(!sessionOpen)return;
   trendFocusToday ||= focusToday;
   if(trendGesture||trendTableGesture){trendPendingRender=true;return;}
   const requestId=++trendRenderId;
   const history=await collectHistory();
+  if(!sessionOpen)return;
   if(requestId!==trendRenderId)return;
   if(trendGesture||trendTableGesture){trendPendingRender=true;return;}
   const end=state.date,stop=trendDateValue(end)+TREND_DAY;
@@ -2263,6 +2337,7 @@ function historyRows(date){
   return rows.sort((a,b)=>(a.time||'99:99').localeCompare(b.time||'99:99')||a.id.localeCompare(b.id));
 }
 function renderHistory(){
+  if(!sessionOpen)return;
   const dates=historyDates(),picker=document.getElementById('historyPicker'),content=document.getElementById('historyContent');
   picker.hidden=!dates.length;
   if(!dates.length){document.getElementById('historySummary').innerHTML='';content.innerHTML='<div class="history-empty">还没有记录。</div>';return;}
@@ -2312,9 +2387,6 @@ $("#btnReset").addEventListener("click", async ()=>{
 });
 
 /* ============ 药物说明 ============ */
-$("#medList").innerHTML = MEDS.map(m=>
-  '<div class="med"><h4>'+esc(m.n)+'</h4><div class="gen">'+esc(m.g)+'</div><ul>'+
-  m.pts.map(p=>"<li>"+p+"</li>").join("")+'</ul></div>').join("");
 
 /* ============ 启动 ============ */
 function stamp(){
@@ -2332,9 +2404,10 @@ function rolloverDay(){
 
 async function boot(){
   const w=document.querySelector("#jsWarn");if(w)w.style.display="none";
-  stamp(); render(); setAppEnabled(false);
+  setAppEnabled(false);
   await initStore();
   async function refreshTick(){
+    if(!sessionOpen)return;
     rolloverDay();await syncPull();
     if(cloudReady)tickRefresh();
   }
@@ -2345,6 +2418,7 @@ async function boot(){
   });
   window.addEventListener("pagehide",()=>{ clearTimeout(queueTimer); flushCloud(); });
   window.addEventListener("online",()=>{flushCloud();syncPull();});
+  window.addEventListener("offline",()=>{if(sessionOpen){offline=true;queueStatus();}});
   document.getElementById("btnSyncRetry").onclick=async()=>{const btn=document.getElementById("btnSyncRetry");btn.disabled=true;try{if(syncConflicts.length)await resolveSyncConflicts();else{await flushCloud();await syncPull(true);}}finally{btn.disabled=false;}};
 }
 
@@ -2358,15 +2432,28 @@ boot().catch(function(err){
 document.getElementById("btnSyncCfg").addEventListener("click", async ()=>{
   if(cloudBusy||pullBusy||syncSettingsBusy){setStatus("正在同步，请稍后再修改令牌。");return;}
   syncSettingsBusy=true;
+  let token;
   try{
-    const token=await dlgOpen({type:"input",title:"同步令牌",secret:true,tools:true,value:ghCfg.token||"",
-      body:"令牌只保存在这台设备的浏览器。清空后暂停云端同步，缓存和待上传修改会保留。"});
+    token=await dlgOpen({type:"input",title:"同步令牌",secret:true,tools:true,value:ghCfg.token||"",
+      body:"令牌只保存在当前浏览器。清空并确定将退出登录，同时清除缓存和待上传修改。"});
     if(token===null)return;
-    const next={token:token.trim()};
-    if(!LS.set(GH_CFG_KEY,next)){queueStatus(new Error("令牌未能保存，设置未变更"));return;}
-    ghCfg=next;ghEtag=null;ghSha=null;ghCache=null;
+    if(!token.trim()){await logout();return;}
   }finally{syncSettingsBusy=false;}
-  await syncPull(true);
+  if(await loginWithToken(token)){await flushCloud();await syncPull(true);}
+});
+document.getElementById("loginForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  if(await loginWithToken(document.getElementById("loginToken").value)){await flushCloud();await syncPull(true);}
+});
+document.getElementById("loginPaste").addEventListener("click",async()=>{
+  try{document.getElementById("loginToken").value=(await navigator.clipboard.readText()).trim();loginMessage("已粘贴");}
+  catch(e){loginMessage("无法读取剪贴板，请长按输入框粘贴");}
+});
+document.getElementById("loginClear").addEventListener("click",async()=>{
+  if(syncSettingsBusy||cloudBusy||pullBusy)return;
+  syncSettingsBusy=true;
+  try{if(ghOn()&&!await logout())return;document.getElementById("loginToken").value="";}
+  finally{syncSettingsBusy=false;}
 });
 </script>
 
