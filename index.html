@@ -103,17 +103,16 @@
 .swipe{position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
 .swipe-bg{position:absolute;inset:0;display:flex;align-items:center;justify-content:flex-end;
   padding-right:22px;background:#C4342F;color:#fff;font-size:14px;font-weight:600}
-.swipe-fg{position:relative;display:flex;align-items:center;gap:10px;padding:11px 14px;
+.swipe-fg{position:relative;display:flex;align-items:center;gap:10px;padding:11px 10px 11px 14px;
   background:var(--surface);touch-action:pan-y;will-change:transform}
-.tpl-mark{flex:0 0 17px;width:17px;height:17px;border:1.5px solid var(--line-2);
-  border-radius:5px;display:inline-block}
 .tpl-time{flex:0 0 auto;padding:3px 9px;font-size:13px;font-weight:600;font-family:inherit;
   font-variant-numeric:tabular-nums;border:1px solid var(--line-2);border-radius:8px;
   background:var(--surface-2);color:var(--ink)}
 .tpl-time.unset{border-color:#E0BE86;background:#FFF6E5;color:#8A5100}
-.tpl-title{flex:1;min-width:0;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.tpl-ren{flex:0 0 auto;padding:5px 11px;font-size:12.5px;font-family:inherit;
-  border:1px solid var(--line-2);border-radius:999px;background:transparent;color:var(--ink-2)}
+.tpl-title{flex:1;min-width:0;font-size:15px;line-height:1.35;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tpl-ren{flex:0 0 auto;width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;
+  padding:0;border:0;border-radius:9px;background:transparent;color:var(--ink-2)}
+.tpl-ren:active{background:var(--surface-2);color:var(--ink)}
 .tpl-acts{display:flex;gap:8px;flex-wrap:wrap;margin:14px 14px 0}
 .tpl-new{width:100%;margin-top:14px;padding:13px;font-size:15px;font-weight:600;font-family:inherit;
   border:1px dashed var(--line-2);border-radius:14px;background:transparent;color:var(--ink-2)}
@@ -1141,7 +1140,7 @@ function customItemDate(c){
 function ensureCustomDates(){
   if(!cloudReady)return;
   for(const c of state.config.custom||[]){
-    if(!c||!/^[-a-zA-Z0-9_]+$/.test(c.id)||/^\d{4}-\d{2}-\d{2}$/.test(c.date||''))continue;
+    if(!c||!/^[-a-zA-Z0-9_]+$/.test(c.id)||c.tpl||/^\d{4}-\d{2}-\d{2}$/.test(c.date||''))continue;
     c.date=customItemDate(c);queueScope(['config','customById',c.id,'date'],c.date);
   }
 }
@@ -1157,7 +1156,15 @@ function setStatus(t){ $("#status").textContent = t; }
 /* ============ 排程 ============ */
 /* ---- 自定义事项 ---- */
 function customItems(date=state.date){
-  return (state.config.custom||[]).filter(c=>c && /^[a-zA-Z0-9_-]+$/.test(c.id)&&(date===null||customItemDate(c)===date)).map(c=>({
+  return (state.config.custom||[]).filter(c=>{
+    if(!c||!/^[a-zA-Z0-9_-]+$/.test(c.id))return false;
+    if(!c.date){                                           // 长期事项跟着所属模版，也受模版排除影响
+      if(c.tpl && c.tpl!==activeTplId()) return false;
+      const t=activeTpl();
+      return !(t && (t.off||[]).includes(c.id));
+    }
+    return date===null||customItemDate(c)===date;          // 临时事项只活当天
+  }).map(c=>({
     id:c.id, t:c.t, ph:phaseOfTime(c.t), kind:["服药","测量","进食","护理","输液"].includes(c.kind)?c.kind:"服药",
     title:c.title, sub:c.sub||"", note:esc(c.note||""), custom:true,
     m:c.m||null, ref:c.ref||null, refTxt:c.refTxt||"",
@@ -2625,11 +2632,18 @@ function phaseName(ph){
 }
 function tplItemRows(t){
   const off=t.off||[], times=t.t||{}, names=itemNames();
-  const rows=ITEMS.filter(i=>!off.includes(i.id)).map(i=>({
-    id:i.id, t:(times[i.id]!==undefined?times[i.id]:i.t),
-    title:(names[i.id]!==undefined?names[i.id]:i.title),
-    unset:times[i.id]==='00:00'
-  }));
+  const pick=(id,base)=>({
+    id:id,
+    t:(times[id]!==undefined?times[id]:base.t),
+    title:(names[id]!==undefined?names[id]:base.title),
+    unset:(times[id]!==undefined?times[id]:base.t)==='00:00'
+  });
+  const rows=ITEMS.filter(i=>!off.includes(i.id)).map(i=>pick(i.id,i));
+  // 在本模版里新建的长期事项（不带日期的那种）
+  for(const c of (state.config.custom||[])){
+    if(!c||c.date||c.tpl!==t.id||off.includes(c.id))continue;
+    rows.push(pick(c.id,c));
+  }
   rows.sort((a,b)=>a.t.localeCompare(b.t));
   return rows;
 }
@@ -2663,10 +2677,12 @@ function renderTemplates(){
         html+='<div class="swipe" data-swipe="'+esc(t.id)+'|'+esc(r.id)+'">'+
           '<div class="swipe-bg"><span>移出</span></div>'+
           '<div class="swipe-fg">'+
-            '<span class="tpl-mark" aria-hidden="true"></span>'+
             '<button type="button" class="tpl-time'+(r.unset?' unset':'')+'" data-tpl-time="'+esc(t.id)+'|'+esc(r.id)+'">'+esc(r.t)+'</button>'+
             '<span class="tpl-title">'+esc(r.title)+'</span>'+
-            '<button type="button" class="tpl-ren" data-tpl-ren="'+esc(r.id)+'">重命名</button>'+
+            '<button type="button" class="tpl-ren" data-tpl-ren="'+esc(r.id)+'" aria-label="重命名">'+
+              '<svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'+
+              '<path d="M3.5 13.6V16.5H6.4L15 7.9 12.1 5 3.5 13.6Z"/><path d="M12.1 5 15 7.9"/></svg>'+
+            '</button>'+
           '</div></div>';
       }
       html+='<div class="tpl-acts">'+
@@ -2786,16 +2802,31 @@ document.addEventListener('click', async (e)=>{
   const add=e.target.closest('[data-tpl-add]');
   if(add){
     const t=templates().find(z=>z.id===add.dataset.tplAdd); if(!t)return;
-    const off=t.off||[];
-    const names=itemNames();
-    const pool=ITEMS.filter(i=>off.includes(i.id));
-    const choices=pool.map(i=>(names[i.id]!==undefined?names[i.id]:i.title)).concat(['＋ 新建一个事项']);
-    if(!pool.length){ setStatus('本模版已经包含全部事项。'); return; }
-    const pick=await dlgOpen({type:'choice',title:'加事项',body:'从事项表里挑一条加回本模版。',choices:choices});
-    if(pick===null)return;
-    if(pick==='＋ 新建一个事项'){ setStatus('新建事项请用「今天」页的「＋ 添加事项」。'); return; }
-    const hit=pool[choices.indexOf(pick)];
-    if(hit) addToTpl(hit.id);
+    const presets={'测体温':'体温','测血糖':'血糖','测血压':'血压 / 心率','测血氧':'血氧'};
+    const title=await dlgOpen({type:'input',title:'新建事项',
+      body:'加进「'+t.name+'」，以后每天都会出现。只做一次的用「今天」页的添加事项。',
+      presets:Object.keys(presets),value:''});
+    if(title===null||!title.trim())return;
+    const tt=await dlgOpen({type:'time',title:'几点做？',body:'点时间选择小时和分钟。',value:'08:00'});
+    if(tt===null)return;
+    const pm=Object.hasOwn(presets,title.trim())?presets[title.trim()]:null;
+    const kind=pm?'测量':await dlgOpen({type:'choice',title:'事项类型',choices:['服药','测量','进食','输液','护理']});
+    if(kind===null)return;
+    const metric=pm||await dlgOpen({type:'choice',title:'要记录什么数值？',choices:['不记录数值','体温','血糖','血压 / 心率','血氧']});
+    if(metric===null)return;
+    const conf={'体温':{m:'temp',ref:[36.0,37.2],refTxt:'参考 36.0–37.2'},
+      '血糖':{m:'bg',ref:[3.9,10.0],refTxt:'参考 3.9–10.0'},
+      '血压 / 心率':{m:'bp',refTxt:'血压 < 140/90'},'血氧':{m:'spo2',refTxt:'血氧 ≥ 95%'}}[metric]||{};
+    const sub=await askText('补充说明（可留空）','怎么做、注意什么，写给陪护看。','');
+    if(sub===null)return;
+    // 长期事项：不带 date，每天都刷新出来；临时加测那种是带 date 的
+    state.config.custom=state.config.custom||[];
+    state.config.custom.push(Object.assign({
+      id:'p'+Date.now().toString(36), t:tt, kind:kind,
+      title:title.trim(), sub:(sub||'').trim(), tpl:t.id
+    }, conf));
+    saveConfig(); renderTemplates(); render();
+    setStatus('已把「'+title.trim()+'」加进本模版，每天 '+tt+' 出现。');
     return;
   }
 
