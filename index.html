@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>住院一日清单</title>
+<meta name="theme-color" content="#1769e0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="住院清单">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231769e0'/%3E%3Cg stroke='white' stroke-width='4' stroke-linecap='round'%3E%3Cpath d='M24 22h18M24 32h18M24 42h18'/%3E%3Cpath d='M13 22l3 3 6-6M13 32l3 3 6-6'/%3E%3C/g%3E%3Ccircle cx='16' cy='42' r='4' fill='none' stroke='white' stroke-width='3'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#f5f7f9;--card:#fff;--text:#18202a;--muted:#687381;--line:#e6eaee;
+  --accent:#1769e0;--soft:#eef5ff;--ok:#16834b;--warn:#b86a00;--danger:#c73737;
+  --shadow:0 2px 12px rgba(20,30,45,.06);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Microsoft YaHei",sans-serif}
+button,input,select,textarea{font:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:760px;margin:0 auto;padding:18px 14px 90px}
+.top{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--shadow);position:sticky;top:8px;z-index:10}
+.hospital{font-size:13px;color:var(--muted)}
+h1{font-size:25px;margin:5px 0 3px}
+.date{color:var(--muted);font-size:14px}
+.progress{display:flex;gap:10px;align-items:center;margin-top:14px}
+.bar{height:8px;background:#edf0f2;border-radius:999px;overflow:hidden;flex:1}
+.bar>i{display:block;height:100%;background:var(--accent);width:0;transition:width .25s}
+.stat{font-size:13px;font-weight:600}
+.next{margin-top:12px;background:var(--soft);border-radius:14px;padding:12px 13px;cursor:pointer}
+.next small{display:block;color:var(--muted);margin-bottom:3px}
+.next strong{display:block}
+.tabs{display:flex;gap:8px;margin-top:12px;overflow:auto}
+.tabs button,.pill,.mini,.primary,.ghost{border:0;border-radius:10px;padding:9px 12px;background:#f0f2f4;color:var(--text);cursor:pointer}
+.tabs button.active,.primary{background:var(--accent);color:#fff}
+.sync{font-size:12px;color:var(--ok);margin-top:9px}
+.section{margin-top:20px}
+.section-head{display:flex;justify-content:space-between;align-items:center;margin:0 3px 8px}
+.section-head h2{font-size:17px;margin:0}
+.section-head span{font-size:12px;color:var(--muted)}
+.item{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin:8px 0;box-shadow:var(--shadow)}
+.item.done{opacity:.66}
+.item.skipped{opacity:.52}
+.item.overdue{border-color:#f0c3c3;background:#fffafa}
+.row{display:flex;gap:11px;align-items:flex-start}
+.time{width:52px;flex:0 0 52px;font-variant-numeric:tabular-nums;font-weight:700;color:#34404d}
+.main{flex:1;min-width:0}
+.meta{font-size:12px;color:var(--muted);margin-bottom:3px}
+.title{font-weight:700;line-height:1.35}
+.desc{font-size:13px;color:var(--muted);margin-top:5px;line-height:1.5}
+.badge{display:inline-block;font-size:11px;border-radius:999px;padding:3px 7px;background:#f0f2f4;margin-left:6px;color:var(--muted)}
+.badge.stop{background:#fff1f0;color:#b33}
+.badge.late{background:#fdecec;color:var(--danger)}
+.badge.check{background:#fff5e7;color:var(--warn)}
+.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:11px 0 3px}
+.field{background:#fafbfc;border:1px solid var(--line);border-radius:10px;padding:8px}
+.field label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
+.field input{width:100%;border:0;background:transparent;outline:none;font-size:16px}
+.actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.actions button{font-size:12px}
+.complete{background:#e9f8ef;color:var(--ok)}
+.skip{background:#fff5e7;color:var(--warn)}
+.delete{background:#fff0f0;color:var(--danger)}
+.details{margin-top:9px;font-size:12px}
+.details summary{cursor:pointer;color:#4b5663}
+.details p{color:var(--muted);line-height:1.55}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}
+.footer{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:20px;font-size:13px;line-height:1.65;color:var(--muted)}
+.view{display:none}.view.active{display:block}
+.chartbox{background:#fff;border:1px solid var(--line);border-radius:16px;padding:15px;margin-top:18px}
+svg{width:100%;height:240px}
+.history-day{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:flex-end;justify-content:center;z-index:50}
+.modal.show{display:flex}
+.sheet{background:#fff;width:min(760px,100%);border-radius:20px 20px 0 0;padding:18px;max-height:85vh;overflow:auto}
+.sheet input,.sheet select,.sheet textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;margin:6px 0 12px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:#18202a;color:#fff;padding:12px 16px;border-radius:12px;font-size:14px;z-index:60;max-width:90vw;display:none;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+.toast.show{display:block}
+@media(max-width:520px){.wrap{padding:10px 8px 84px}.top{border-radius:14px}.fields{grid-template-columns:1fr 1fr}.time{width:46px;flex-basis:46px}.item{padding:12px}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="hospital">云南省第一人民医院东院 · 呼吸与危重症医学科</div>
+    <h1>住院一日清单</h1>
+    <div class="date" id="dateText"></div>
+    <div class="progress"><div class="bar"><i id="progressBar"></i></div><div class="stat" id="progressText">0/0 已完成</div></div>
+    <div class="next" id="nextBox"><small>下一项</small><strong id="nextTitle">—</strong><div class="desc" id="nextTime">—</div></div>
+    <div class="tabs">
+      <button class="active" data-view="today">今天</button>
+      <button data-view="chart">图表</button>
+      <button data-view="history">往日</button>
+      <button id="topBtn">回到顶部</button>
+    </div>
+    <div class="sync">记录只存在这台手机上，不会上传</div>
+  </header>
+
+  <main>
+    <section id="today" class="view active">
+      <div class="controls">
+        <button class="primary" id="addBtn">＋ 添加事项</button>
+        <button class="ghost" id="notifyBtn">开启到点提醒</button>
+        <button class="ghost" id="icsBtn">导入手机日历</button>
+        <button class="ghost" id="exportBtn">导出记录</button>
+        <button class="ghost" id="resetBtn">重置今天</button>
+      </div>
+      <div id="sections"></div>
+      <div class="footer">
+        <strong>用药说明</strong><br>
+        这张清单是按家属口述整理的日常安排，不是医嘱本身，也不能替代医生判断。每天以护士交代和当天医嘱为准，有出入就改这里。<br>
+        体温 ≥ 38.5 ℃、血糖低于 3.9 mmol/L 或出现心慌出冷汗、输液中出现皮疹胸闷 —— 立刻按铃找护士。
+      </div>
+    </section>
+
+    <section id="chart" class="view">
+      <div class="chartbox"><h3>今日体温</h3><svg id="tempChart"></svg></div>
+      <div class="chartbox"><h3>今日血糖</h3><svg id="glucoseChart"></svg></div>
+      <div class="chartbox"><h3>今日血氧</h3><svg id="spo2Chart"></svg></div>
+    </section>
+
+    <section id="history" class="view">
+      <div class="chartbox">
+        <h3>往日记录</h3>
+        <div id="historyList" class="desc">还没有往日记录。每天的打勾和测量值会自动留在这台手机上。</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="modal" id="modal">
+  <div class="sheet">
+    <h3>添加事项</h3>
+    <label for="newTime">时间</label><input id="newTime" type="time" value="12:00">
+    <label for="newType">类别</label>
+    <select id="newType"><option>服药</option><option>测量</option><option>护理</option><option>输液</option><option>进食</option><option>其他</option></select>
+    <label for="newTitle">名称</label><input id="newTitle" placeholder="例如：测血氧">
+    <label for="newDesc">说明</label><textarea id="newDesc" rows="3"></textarea>
+    <div class="actions"><button class="primary" id="saveNew">保存</button><button class="ghost" id="cancelNew">取消</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const KEY='hospitalDailyChecklist_v1';
+const pad=n=>String(n).padStart(2,'0');
+// 本地日期，不用 toISOString（那个取的是 UTC，UTC+8 的早上 8 点前会算成昨天）
+const dateKey=(d=new Date())=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const nowHHMM=(d=new Date())=>`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const weekday=['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+// [分区, 时间, 类别, 名称, 说明, 录入字段, 参考值, 停用中, 待确认]
+const template=[
+["清晨","06:45","测量","空腹血糖","必须在吃早饭、吃降糖药之前测","glucose","参考 4.4–7.0"],
+["清晨","07:30","测量","量体温","起床后第一件事，静坐 5 分钟再测","temp","参考 36.0–37.2"],
+["清晨","08:00","服药","桉柠蒎肠溶胶囊（祛痰）","餐前30分钟 · 凉开水整粒吞服"],
+
+["上午","08:30","服药","降压药 · 厄贝沙坦片 0.15g","整片吞服，每天固定时间"],
+["上午","08:30","服药","降糖药 · 阿卡波糖（餐前）","和早餐第一口饭一起嚼服"],
+["上午","08:40","进食","早餐","记一下大概几点吃的第一口，餐后血糖从这里开始算 2 小时","meal"],
+["上午","09:00","服药","通窍鼻炎颗粒（鼻炎）","吃完饭后5分钟 · 温水冲服"],
+["上午","09:10","服药","连花清瘟颗粒","吃完饭后5分钟 · 温水冲服 · 一日3次"],
+["上午","09:10","测量","血氧","目标 ≥ 95%","spo2"],
+["上午","09:37","测量","测体温","","temp","参考 36.0–37.2"],
+["上午","09:38","服药","抗新冠 · 先诺欣（第 1 次）","每 12 小时一次，与晚上 21:38 那次配对 · 先诺特韦2片＋利托那韦1片 · 和吃饭的间隔按药师交代为准","none","",false,true],
+["上午","09:40","护理","漱口 · 复方硼砂含漱液","本轮服药后至少10分钟再含漱 · 不可吞服"],
+["上午","09:47","输液","上午输液 · 2 瓶（左氧氟沙星氯化钠针）","可按当天医嘱修改药名和瓶数"],
+["上午","09:50","护理","雾化","坐直、含住口含器慢吸慢呼"],
+["上午","10:40","测量","早餐后 2 小时血糖","从早餐第一口算起满 2 小时测，别提前也别拖","glucose","参考 3.9–10.0"],
+
+["中午","12:40","服药","桉柠蒎肠溶胶囊（祛痰）","餐前30分钟 · 凉开水整粒吞服"],
+["中午","12:45","服药","降糖药 · 阿卡波糖（餐前）","和午餐第一口饭一起嚼服"],
+["中午","12:45","进食","午餐","餐后血糖从第一口开始算 2 小时","meal"],
+["中午","13:15","服药","通窍鼻炎颗粒（鼻炎）","吃完饭后5分钟 · 温水冲服"],
+["中午","13:15","服药","连花清瘟颗粒","吃完饭后5分钟 · 温水冲服"],
+["中午","13:54","测量","量体温","输液后这次最重要，看有没有反跳发热","temp","参考 36.0–37.2"],
+["中午","13:55","护理","漱口 · 复方硼砂含漱液","本轮服药后至少10分钟再含漱 · 不可吞服"],
+
+["下午","14:36","测量","测血压 · 心率 · 血氧","静坐 5 分钟，袖带与心脏齐平；血氧夹手指测，目标 ≥ 95%","bp"],
+["下午","14:45","测量","午餐后 2 小时血糖","从午餐第一口算起满 2 小时","glucose","参考 3.9–10.0"],
+["下午","16:00","输液","午后输液 · 1 瓶","抗感染 · 09.07 起由头孢类换用 · 记录上只有溶媒（氯化钠注射液），主药名要问护士补上","none","",false,true],
+
+["傍晚","16:30","测量","血氧","目标 ≥ 95%","spo2"],
+["傍晚","17:10","服药","桉柠蒎肠溶胶囊（祛痰）","餐前30分钟 · 凉开水整粒吞服"],
+["傍晚","17:15","服药","降糖药 · 阿卡波糖（餐前）","和晚餐第一口饭一起嚼服"],
+["傍晚","17:17","进食","晚餐","餐后血糖从第一口开始算 2 小时","meal"],
+["傍晚","17:44","服药","通窍鼻炎颗粒（鼻炎）","吃完饭后5分钟 · 温水冲服"],
+["傍晚","17:44","服药","连花清瘟颗粒","吃完饭后5分钟 · 温水冲服"],
+["傍晚","18:36","测量","血氧","目标 ≥ 95%","spo2"],
+["傍晚","18:40","测量","体温","","temp","参考 36.0–37.2"],
+["傍晚","19:00","输液","晚间输液 · 1 瓶（化痰药）","药名要问护士补上 · 可记录开始输液时间","none","",false,true],
+["傍晚","19:20","测量","晚餐后 2 小时血糖","从晚餐第一口算起满 2 小时","glucose","参考 3.9–10.0"],
+["傍晚","20:15","护理","漱口 · 复方硼砂含漱液","本轮服药后至少10分钟再含漱 · 不可吞服"],
+
+["睡前","20:30","测量","量体温","一天里最容易发热的时段，别漏","temp","参考 36.0–37.2"],
+["睡前","21:17","服药","睡前 · 阿托伐他汀钙片","抗病毒这 5 天不吃 —— 疗程结束当天接回","none","",true],
+["睡前","21:38","服药","抗新冠 · 先诺欣（第 2 次）","每 12 小时一次，与早上 09:38 那次配对 · 先诺特韦2片＋利托那韦1片 · 和吃饭的间隔按药师交代为准","none","",false,true],
+["睡前","22:00","测量","血压","血压 < 140/90 · 血氧 ≥ 95%","bp"],
+["睡前","23:00","服药","抗血小板 · 硫酸氢氯吡格雷片","每天固定时间，一片，防脑梗复发"]
+];
+
+function makeItems(){
+  return template.map((x,i)=>({
+    id:'base-'+i,section:x[0],time:x[1],type:x[2],title:x[3],desc:x[4]||'',kind:x[5]||'none',
+    ref:x[6]||'',paused:!!x[7],confirm:!!x[8],done:false,skipped:false,values:{}
+  }));
+}
+function loadAll(){try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){return {}}}
+function saveAll(x){try{localStorage.setItem(KEY,JSON.stringify(x))}catch(e){toast('保存失败，手机存储可能已满')}}
+let all=loadAll();
+let curKey=dateKey();
+function ensureDay(){
+  if(!all[curKey]) all[curKey]={items:makeItems(),createdAt:new Date().toISOString(),notified:[]};
+  if(!all[curKey].notified) all[curKey].notified=[];
+  return all[curKey];
+}
+let day=ensureDay();
+
+function save(){all[curKey]=day;saveAll(all);render()}
+function toast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),3200);
+}
+function renderFields(item){
+  const v=k=>esc(item.values[k]||'');
+  if(item.kind==='glucose') return `<div class="fields"><div class="field"><label>血糖 mmol/L</label><input inputmode="decimal" data-v="glucose" value="${v('glucose')}"></div></div>`;
+  if(item.kind==='temp') return `<div class="fields"><div class="field"><label>体温 ℃</label><input inputmode="decimal" data-v="temp" value="${v('temp')}"></div></div>`;
+  if(item.kind==='spo2') return `<div class="fields"><div class="field"><label>血氧 %</label><input inputmode="numeric" data-v="spo2" value="${v('spo2')}"></div></div>`;
+  if(item.kind==='bp') return `<div class="fields">
+    <div class="field"><label>收缩压 mmHg</label><input inputmode="numeric" data-v="sys" value="${v('sys')}"></div>
+    <div class="field"><label>舒张压 mmHg</label><input inputmode="numeric" data-v="dia" value="${v('dia')}"></div>
+    <div class="field"><label>心率 次/分</label><input inputmode="numeric" data-v="hr" value="${v('hr')}"></div>
+    <div class="field"><label>血氧 %</label><input inputmode="numeric" data-v="spo2" value="${v('spo2')}"></div>
+  </div>`;
+  if(item.kind==='meal') return `<div class="fields"><div class="field"><label>第一口时间</label><input type="time" data-v="mealTime" value="${v('mealTime')||item.time}"></div></div>`;
+  return '';
+}
+function noteFor(item){
+  if(item.kind==='glucose' && item.values.glucose){
+    const v=+item.values.glucose;
+    if(v<3.9) return `<div class="desc" style="color:var(--danger)">⚠ 血糖低于 3.9 mmol/L，请立即联系护士。</div>`;
+  }
+  if(item.kind==='temp' && item.values.temp && +item.values.temp>=38.5)
+    return `<div class="desc" style="color:var(--danger)">⚠ 体温 ≥ 38.5 ℃，请立即联系护士。</div>`;
+  if((item.kind==='bp'||item.kind==='spo2') && item.values.spo2 && +item.values.spo2<95)
+    return `<div class="desc" style="color:var(--warn)">⚠ 血氧低于 95%，请按医嘱观察并联系医护人员。</div>`;
+  return '';
+}
+const isOverdue=it=>!it.done&&!it.skipped&&!it.paused&&it.time<nowHHMM();
+
+function render(){
+  const d=new Date();
+  document.getElementById('dateText').textContent=`${d.getFullYear()} 年 ${d.getMonth()+1} 月 ${d.getDate()} 日 · ${weekday[d.getDay()]}`;
+  const sections=[...new Set(day.items.map(x=>x.section))];
+  const box=document.getElementById('sections'); box.innerHTML='';
+  sections.forEach(sec=>{
+    const arr=day.items.filter(x=>x.section===sec);
+    const done=arr.filter(x=>x.done).length;
+    const s=document.createElement('div');s.className='section';
+    s.innerHTML=`<div class="section-head"><h2>${esc(sec)}</h2><span>${done}/${arr.length}</span></div>`;
+    arr.slice().sort((a,b)=>a.time.localeCompare(b.time)).forEach(item=>{
+      const el=document.createElement('div');
+      el.className='item'+(item.done?' done':'')+(item.skipped?' skipped':'')+(isOverdue(item)?' overdue':'');
+      el.dataset.id=item.id;
+      el.innerHTML=`<div class="row"><div class="time">${esc(item.time)}</div><div class="main">
+        <div class="meta">${esc(item.type)}${item.paused?'<span class="badge stop">停用中</span>':''}${item.confirm?'<span class="badge check">待确认</span>':''}<span class="badge late" data-overdue style="display:${isOverdue(item)?'inline-block':'none'}">已过点</span></div>
+        <div class="title">${esc(item.title)}</div>
+        ${item.desc?`<div class="desc">${esc(item.desc)}</div>`:''}
+        ${item.ref?`<div class="desc">${esc(item.ref)}</div>`:''}
+        ${renderFields(item)}
+        ${noteFor(item)}
+        <details class="details"><summary>注意事项 ▾</summary><p>请以当天医嘱、护士交代和药品说明为准。出现明显不适或指标异常时及时按铃联系护士。</p></details>
+        <div class="actions">
+          <button class="pill skip" data-action="skip">${item.skipped?'恢复':'今天跳过'}</button>
+          <button class="pill complete" data-action="done">${item.done?'取消完成':'标记完成 ✓'}</button>
+          ${item.id.startsWith('custom-')?'<button class="pill delete" data-action="delete">删除</button>':''}
+        </div>
+      </div></div>`;
+      s.appendChild(el);
+    });
+    box.appendChild(s);
+  });
+  updateSummary();
+  renderCharts(); renderHistory();
+}
+function updateSummary(){
+  const total=day.items.length, complete=day.items.filter(x=>x.done).length;
+  document.getElementById('progressText').textContent=`${complete}/${total} 已完成`;
+  document.getElementById('progressBar').style.width=(total?complete/total*100:0)+'%';
+  const next=day.items.filter(x=>!x.done&&!x.skipped&&!x.paused).sort((a,b)=>a.time.localeCompare(b.time))[0];
+  document.getElementById('nextTitle').textContent=next?next.title:'今天已全部处理';
+  document.getElementById('nextTime').textContent=next?`${next.time} · ${next.type}`:'—';
+  document.getElementById('nextBox').onclick=()=>{if(next){document.querySelector(`[data-id="${next.id}"]`)?.scrollIntoView({behavior:'smooth',block:'center'})}};
+}
+// 轻量刷新：不重建 DOM，避免正在输入的框失焦
+function refreshStatus(){
+  day.items.forEach(it=>{
+    const el=document.querySelector(`[data-id="${it.id}"]`);
+    if(!el)return;
+    const over=isOverdue(it);
+    el.classList.toggle('overdue',over);
+    const b=el.querySelector('[data-overdue]');
+    if(b)b.style.display=over?'inline-block':'none';
+  });
+  updateSummary();
+}
+
+document.getElementById('sections').addEventListener('click',e=>{
+  const btn=e.target.closest('button');if(!btn)return;
+  const el=btn.closest('.item'), item=day.items.find(x=>x.id===el.dataset.id); if(!item)return;
+  if(btn.dataset.action==='done'){item.done=!item.done;if(item.done)item.skipped=false}
+  if(btn.dataset.action==='skip'){item.skipped=!item.skipped;if(item.skipped)item.done=false}
+  if(btn.dataset.action==='delete'){if(!confirm('删除这条事项？'))return;day.items=day.items.filter(x=>x.id!==item.id)}
+  save();
+});
+document.getElementById('sections').addEventListener('change',e=>{
+  const input=e.target;if(!input.dataset.v)return;
+  const el=input.closest('.item'),item=day.items.find(x=>x.id===el.dataset.id);if(!item)return;
+  item.values[input.dataset.v]=input.value;
+  if(input.dataset.v==='mealTime'){
+    const names={早餐:'早餐后 2 小时血糖',午餐:'午餐后 2 小时血糖',晚餐:'晚餐后 2 小时血糖'};
+    const target=day.items.find(x=>x.title===names[item.title]);
+    if(target && input.value){
+      let [h,m]=input.value.split(':').map(Number);h=(h+2)%24;
+      target.time=pad(h)+':'+pad(m);
+      toast(`已把「${target.title}」调到 ${target.time}`);
+    }
+  }
+  save();
+});
+document.querySelectorAll('.tabs button[data-view]').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tabs button[data-view]').forEach(x=>x.classList.toggle('active',x===b));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===b.dataset.view));
+  if(b.dataset.view==='chart')renderCharts();
+});
+document.getElementById('topBtn').onclick=()=>scrollTo({top:0,behavior:'smooth'});
+document.getElementById('resetBtn').onclick=()=>{
+  if(confirm('重置今天的完成状态和测量值？已填的数字会一起清掉。')){
+    day={items:makeItems(),createdAt:new Date().toISOString(),notified:[]};save();
+  }
+};
+document.getElementById('addBtn').onclick=()=>document.getElementById('modal').classList.add('show');
+document.getElementById('cancelNew').onclick=()=>document.getElementById('modal').classList.remove('show');
+document.getElementById('saveNew').onclick=()=>{
+  const titleEl=document.getElementById('newTitle');
+  const title=titleEl.value.trim();
+  if(!title){toast('请填写事项名称');return}
+  day.items.push({
+    id:'custom-'+Date.now(),section:'自加',time:document.getElementById('newTime').value,
+    type:document.getElementById('newType').value,title,
+    desc:document.getElementById('newDesc').value.trim(),
+    kind:'none',ref:'',paused:false,confirm:false,done:false,skipped:false,values:{}
+  });
+  document.getElementById('modal').classList.remove('show');
+  titleEl.value='';document.getElementById('newDesc').value='';
+  save();
+};
+document.getElementById('exportBtn').onclick=()=>{
+  download(new Blob([JSON.stringify(all,null,2)],{type:'application/json'}),'住院一日清单记录-'+curKey+'.json');
+};
+function download(blob,name){
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+/* ---------- 到点提醒（页面开着时）---------- */
+document.getElementById('notifyBtn').onclick=async()=>{
+  if(!('Notification' in window)){toast('这个浏览器不支持网页提醒，建议用下面的“导入手机日历”');return}
+  const p=await Notification.requestPermission();
+  toast(p==='granted'?'已开启。注意：只有这个页面开着时才会提醒':'没有拿到通知权限，可以改用“导入手机日历”');
+};
+function fire(item){
+  const body=`${item.time} · ${item.type}`;
+  if('Notification' in window && Notification.permission==='granted'){
+    try{new Notification(item.title,{body,tag:item.id})}catch(e){}
+  }
+  toast(`${item.time} ${item.title}`);
+}
+function tick(){
+  const k=dateKey();
+  if(k!==curKey){curKey=k;day=ensureDay();saveAll(all);render();return}
+  const hhmm=nowHHMM();
+  let changed=false;
+  day.items.forEach(it=>{
+    if(it.done||it.skipped||it.paused)return;
+    if(it.time===hhmm && !day.notified.includes(it.id)){
+      day.notified.push(it.id);changed=true;fire(it);
+    }
+  });
+  if(changed)saveAll(all);
+  refreshStatus();
+}
+setInterval(tick,20000);
+
+/* ---------- 导出日历（系统级提醒）---------- */
+function icsEscape(s){return String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n')}
+function fold(line){
+  const enc=new TextEncoder();let out='',cur='',bytes=0;
+  for(const ch of line){
+    const b=enc.encode(ch).length;
+    if(bytes+b>70){out+=cur+'\r\n ';cur='';bytes=1}
+    cur+=ch;bytes+=b;
+  }
+  return out+cur;
+}
+document.getElementById('icsBtn').onclick=()=>{
+  const d=new Date(),base=`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
+  const stamp=new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
+  const L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//住院一日清单//ZH','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:住院一日清单'];
+  day.items.filter(x=>!x.paused).sort((a,b)=>a.time.localeCompare(b.time)).forEach(it=>{
+    const [h,m]=it.time.split(':');
+    L.push('BEGIN:VEVENT');
+    L.push(`UID:${it.id}-${base}@hospital-checklist`);
+    L.push(`DTSTAMP:${stamp}`);
+    L.push(`DTSTART:${base}T${h}${m}00`);
+    L.push('DURATION:PT10M');
+    L.push('RRULE:FREQ=DAILY');
+    L.push(fold(`SUMMARY:${icsEscape(it.type+' · '+it.title)}`));
+    if(it.desc)L.push(fold(`DESCRIPTION:${icsEscape(it.desc)}`));
+    L.push('BEGIN:VALARM','TRIGGER:PT0S','ACTION:DISPLAY',fold(`DESCRIPTION:${icsEscape(it.title)}`),'END:VALARM');
+    L.push('END:VEVENT');
+  });
+  L.push('END:VCALENDAR');
+  download(new Blob([L.join('\r\n')],{type:'text/calendar;charset=utf-8'}),'住院一日清单.ics');
+  toast('已生成日历文件，用手机日历打开导入即可');
+};
+
+/* ---------- 图表 ---------- */
+function series(kinds,key){
+  return day.items.filter(x=>kinds.includes(x.kind) && x.values[key]!=='' && x.values[key]!=null)
+    .sort((a,b)=>a.time.localeCompare(b.time)).map(x=>({t:x.time,v:+x.values[key]})).filter(x=>!isNaN(x.v));
+}
+function draw(svgId,data,min,max,ref1,ref2){
+  const svg=document.getElementById(svgId),W=700,H=220,p=34;svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  if(!data.length){svg.innerHTML='<text x="50%" y="50%" text-anchor="middle" fill="#7a8490">还没填数字</text>';return}
+  const lo=Math.min(min,...data.map(x=>x.v)), hi=Math.max(max,...data.map(x=>x.v)), span=Math.max(1,hi-lo);
+  const pts=data.map((x,i)=>{const X=p+(W-2*p)*(data.length===1?.5:i/(data.length-1));const Y=H-p-(H-2*p)*(x.v-lo)/span;return [X,Y,x]});
+  let h=`<line x1="${p}" y1="${H-p}" x2="${W-p}" y2="${H-p}" stroke="#ccd2d8"/>`;
+  if(ref1!=null){const y=H-p-(H-2*p)*(ref1-lo)/span;h+=`<line x1="${p}" y1="${y}" x2="${W-p}" y2="${y}" stroke="#d9dde2" stroke-dasharray="5 4"/>`}
+  if(ref2!=null){const y=H-p-(H-2*p)*(ref2-lo)/span;h+=`<line x1="${p}" y1="${y}" x2="${W-p}" y2="${y}" stroke="#d9dde2" stroke-dasharray="5 4"/>`}
+  h+=`<polyline fill="none" stroke="currentColor" stroke-width="3" points="${pts.map(q=>q[0]+','+q[1]).join(' ')}"/>`;
+  pts.forEach(q=>h+=`<circle cx="${q[0]}" cy="${q[1]}" r="4" fill="currentColor"/><text x="${q[0]}" y="${q[1]-9}" text-anchor="middle" font-size="11">${q[2].v}</text><text x="${q[0]}" y="${H-10}" text-anchor="middle" font-size="10" fill="#788390">${q[2].t}</text>`);
+  svg.innerHTML=h;
+}
+function renderCharts(){
+  draw('tempChart',series(['temp'],'temp'),35.5,39,36,37.2);
+  draw('glucoseChart',series(['glucose'],'glucose'),3,12,3.9,10);
+  draw('spo2Chart',series(['bp','spo2'],'spo2'),88,100,95,null);
+}
+function renderHistory(){
+  const box=document.getElementById('historyList');
+  const keys=Object.keys(all).sort().reverse();
+  box.innerHTML=keys.map(k=>{
+    const d=all[k],total=d.items?.length||0,done=d.items?.filter(x=>x.done).length||0;
+    return `<div class="history-day"><strong>${esc(k)}</strong><div class="desc">${done}/${total} 已完成</div></div>`;
+  }).join('')||'还没有往日记录。每天的打勾和测量值会自动留在这台手机上。';
+}
+
+render();
+tick();
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick()});
+</script>
+</body>
+</html>
