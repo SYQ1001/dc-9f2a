@@ -117,6 +117,7 @@ svg{width:100%;height:240px}
         <button class="ghost" id="notifyBtn">开启到点提醒</button>
         <button class="ghost" id="icsBtn">导入手机日历</button>
         <button class="ghost" id="exportBtn">导出记录</button>
+        <button class="ghost" id="importBtn">导入记录</button>
         <button class="ghost" id="resetBtn">重置今天</button>
       </div>
       <div id="sections"></div>
@@ -176,6 +177,23 @@ svg{width:100%;height:240px}
     <div class="hint">两个日期都可以留空，留空就是一直有效。</div>
     <label class="check"><input type="checkbox" id="newOnce"> 只加今天，不进长期方案</label>
     <div class="actions"><button class="primary" id="saveNew">保存</button><button class="ghost" id="cancelNew">取消</button></div>
+  </div>
+</div>
+
+<div class="modal" id="importModal">
+  <div class="sheet">
+    <h3>导入记录</h3>
+    <div class="desc">导入的内容会和现在的数据合并，不会清空已有记录。</div>
+    <label for="importFile">选文件</label>
+    <input id="importFile" type="file" accept=".json,application/json">
+    <label for="importText">或者直接粘贴 JSON</label>
+    <textarea id="importText" rows="5" placeholder='{"plan":…,"days":…}' spellcheck="false"></textarea>
+    <label class="check"><input type="checkbox" id="importWin"> 同一条对不上时，以导入的为准</label>
+    <div class="hint">不勾选的话，手机上现有的内容优先，导入的只补空缺。</div>
+    <div class="actions">
+      <button class="primary" id="importRun">导入</button>
+      <button class="ghost" id="importClose">取消</button>
+    </div>
   </div>
 </div>
 
@@ -786,6 +804,56 @@ document.getElementById('icsBtn').onclick=()=>{
 document.getElementById('exportBtn').onclick=()=>{
   download(new Blob([JSON.stringify(snapshot(),null,2)],{type:'application/json'}),'住院一日清单记录-'+curKey+'.json');
 };
+/* ============ 导入 ============ */
+const importModal=document.getElementById('importModal');
+document.getElementById('importBtn').onclick=()=>{
+  document.getElementById('importText').value='';
+  document.getElementById('importFile').value='';
+  document.getElementById('importWin').checked=false;
+  importModal.classList.add('show');
+};
+document.getElementById('importClose').onclick=()=>importModal.classList.remove('show');
+function normalizeImport(obj){
+  if(!obj||typeof obj!=='object')throw new Error('不是合法的记录文件');
+  // 本应用导出的格式；也兼容只有 days 的旧备份
+  let inc=null;
+  if(obj.plan&&obj.days)inc={plan:obj.plan,days:obj.days};
+  else if(obj.days)inc={plan:{items:[]},days:obj.days};
+  else if(Object.keys(obj).every(k=>/^\d{4}-\d{2}-\d{2}$/.test(k)))inc={plan:{items:[]},days:obj};
+  if(!inc)throw new Error('认不出这个格式，需要包含 days 或 plan');
+  Object.entries(inc.days).forEach(([k,d])=>{
+    if(!d||!Array.isArray(d.items))throw new Error(k+' 这天的 items 不是数组');
+    d.notified=d.notified||[];
+    d.items.forEach(it=>{if(!it.id)throw new Error(k+' 里有条目缺 id');
+      it.values=it.values||{};it.removed=!!it.removed});
+  });
+  (inc.plan.items||[]).forEach(p=>{if(!p.id)throw new Error('方案里有条目缺 id')});
+  return inc;
+}
+function doImport(raw,winner){
+  const inc=normalizeImport(JSON.parse(raw));
+  if(winner){   // 让导入的内容盖过本地：给它盖上当前时间戳
+    (inc.plan.items||[]).forEach(stampAll);
+    Object.values(inc.days).forEach(d=>d.items.forEach(stampAll));
+  }
+  const before=Object.keys(all).length;
+  adopt(mergeState(snapshot(),inc));
+  save();
+  const days=Object.keys(inc.days).length;
+  toast(`已导入 ${days} 天，现在共 ${Object.keys(all).length} 天（原来 ${before} 天）`);
+}
+document.getElementById('importRun').onclick=async()=>{
+  const f=document.getElementById('importFile').files[0];
+  const winner=document.getElementById('importWin').checked;
+  let raw=document.getElementById('importText').value.trim();
+  try{
+    if(f)raw=await f.text();
+    if(!raw){toast('请选文件或粘贴内容');return}
+    doImport(raw,winner);
+    importModal.classList.remove('show');
+  }catch(e){toast('导入失败：'+e.message)}
+};
+
 function download(blob,name){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
@@ -813,14 +881,40 @@ function renderCharts(){
   draw('glucoseChart',series(['glucose'],'glucose'),3,12,3.9,10);
   draw('spo2Chart',series(['bp','spo2'],'spo2'),88,100,95,null);
 }
+const VLABEL={temp:'体温',glucose:'血糖',spo2:'血氧',sys:'收缩压',dia:'舒张压',hr:'心率',mealTime:'第一口'};
+let openDay=null;
+function dayDetail(k){
+  const items=(all[k].items||[]).filter(shown).slice().sort((a,b)=>a.time.localeCompare(b.time));
+  if(!items.length)return '<div class="desc">这天没有记录。</div>';
+  return '<div style="margin-top:10px">'+items.map(it=>{
+    const vals=Object.entries(it.values||{}).filter(([,v])=>v!==''&&v!=null)
+      .map(([kk,v])=>`${VLABEL[kk]||kk} ${esc(v)}`).join(' · ');
+    const mark=it.done?'✓':(it.skipped?'跳过':'—');
+    return `<div style="display:flex;gap:9px;padding:6px 0;border-top:1px solid var(--line);font-size:13px">
+      <span style="width:44px;flex:0 0 44px;color:#34404d;font-variant-numeric:tabular-nums">${esc(it.time)}</span>
+      <span style="flex:1;min-width:0">${esc(it.title)}${vals?`<span class="desc" style="margin:2px 0 0">${vals}</span>`:''}</span>
+      <span style="width:34px;text-align:right;color:${it.done?'var(--ok)':'var(--muted)'}">${mark}</span>
+    </div>`;
+  }).join('')+'</div>';
+}
 function renderHistory(){
   const box=document.getElementById('historyList');
   const keys=Object.keys(all).sort().reverse();
+  if(!keys.length){box.innerHTML='还没有往日记录。';return}
   box.innerHTML=keys.map(k=>{
-    const d=all[k],items=(d.items||[]).filter(shown);
-    return `<div class="history-day"><strong>${esc(k)}</strong><div class="desc">${items.filter(x=>x.done).length}/${items.length} 已完成</div></div>`;
-  }).join('')||'还没有往日记录。';
+    const items=(all[k].items||[]).filter(shown);
+    const nums=items.reduce((n,it)=>n+Object.values(it.values||{}).filter(v=>v!==''&&v!=null).length,0);
+    return `<div class="history-day" data-day="${esc(k)}" style="cursor:pointer">
+      <strong>${esc(k)}</strong>${k===curKey?'<span class="badge">今天</span>':''}
+      <div class="desc">${items.filter(x=>x.done).length}/${items.length} 已完成 · 记了 ${nums} 个数字　${openDay===k?'收起 ▴':'展开 ▾'}</div>
+      ${openDay===k?dayDetail(k):''}</div>`;
+  }).join('');
 }
+document.getElementById('historyList').addEventListener('click',e=>{
+  const card=e.target.closest('[data-day]');if(!card)return;
+  openDay=openDay===card.dataset.day?null:card.dataset.day;
+  renderHistory();
+});
 
 render();tick();paintSync();
 if(sync.on)pull();
