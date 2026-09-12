@@ -5,7 +5,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" id="vp">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<link rel="manifest" href="/manifest.webmanifest">
 <style>*{-webkit-tap-highlight-color:transparent}html{color-scheme:light dark}body{margin:0;font:14px system-ui}img{max-width:100%}[hidden]{display:none!important}
 /* 自定义对话框 */
 .dlg-mask{position:fixed;inset:0;background:rgba(20,31,28,.45);display:flex;align-items:center;justify-content:center;z-index:9999;padding:18px}
@@ -237,7 +236,6 @@ button{font-family:inherit;font-size:inherit;cursor:pointer}
 .tabs .tab[aria-selected="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .toolbar .btn:active,.tabs button:active,.history-picker button:active{transform:translateY(2px);box-shadow:0 1px 3px rgba(20,31,28,.15)}
 .sync-status{display:flex;align-items:center;gap:10px}.sync-status #syncStatus{flex:1;min-width:0}.sync-status .btn{flex:none;padding:7px 14px;font-size:14px}
-.sync-tools{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.today-reminders{display:contents}.sync-tools .btn{font-size:14px;padding:10px 4px;text-wrap:balance}
 .today-footer{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:24px!important;padding-top:18px;border-top:1px solid var(--line)}
 .today-footer .btn{padding:10px 4px}.history-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.history-actions .btn{padding:12px 6px}
 .history-heading{margin:8px 0;font-size:22px}
@@ -495,21 +493,21 @@ body.export-open > :not(#exportView){display:none!important}
     <div>
       <div class="dept">云南省第一人民医院东院 · 呼吸与危重症医学科</div>
       <h1>住院一日清单</h1>
-      <div class="datestr" id="dateStr">2026 年 9 月 12 日 · 星期六</div>
+      <div class="datestr" id="dateStr"></div>
     </div>
-    <div class="ring" id="ringBox"><svg width="66" height="66" viewBox="0 0 66 66" role="img" aria-label="今天完成 6 / 36 项"><circle cx="33" cy="33" r="26" fill="none" stroke="var(--line)" stroke-width="5"></circle><circle cx="33" cy="33" r="26" fill="none" stroke="var(--accent)" stroke-width="5" stroke-linecap="round" stroke-dasharray="163.4" stroke-dashoffset="136.1" transform="rotate(-90 33 33)"></circle><text class="rnum" x="33" y="32" text-anchor="middle">6/36</text><text class="rsub" x="33" y="43" text-anchor="middle">已完成</text></svg></div>
+    <div class="ring" id="ringBox"></div>
   </header>
 
-  <section class="nowbar is-due" id="nowBar" aria-live="polite">
+  <section class="nowbar" id="nowBar" aria-live="polite">
     <div class="nowbar-row">
       <div style="min-width:0">
-        <div class="eyebrow"><span class="dot"></span><span id="nowLabel">该做了</span></div>
-        <h2 id="nowTitle">降压药 · 厄贝沙坦片 0.15g</h2>
-        <div class="meta" id="nowMeta">预定 <b>11:30</b> · 已经过去 <b>220</b> 分钟 · 另有 7 项没勾</div>
+        <div class="eyebrow"><span class="dot"></span><span id="nowLabel">正在加载</span></div>
+        <h2 id="nowTitle">正在读取记录</h2>
+        <div class="meta" id="nowMeta"></div>
         <div style="font-size:12px;color:var(--ink-3);margin-top:4px">点这条可跳到清单里对应的位置</div>
       </div>
       <div class="nowbar-act">
-        <button class="btn btn-primary" id="nowDone" data-target="bpmed">完成</button>
+        <button class="btn btn-primary" id="nowDone" disabled>完成</button>
       </div>
     </div>
   </section>
@@ -523,15 +521,11 @@ body.export-open > :not(#exportView){display:none!important}
     <button class="nav-top" id="btnBackTop" type="button">回到顶部</button>
   </nav>
 
-  <div class="status sync-status"><span id="syncStatus" role="status">已同步 · 家人可共同记录</span><button class="btn" id="btnSyncCfg" type="button">同步设置</button><button class="btn" id="btnSyncRetry" type="button" hidden="">重试</button></div>
+  <div class="status sync-status"><span id="syncStatus" role="status">正在读取记录…</span><button class="btn" id="btnSyncCfg" type="button">同步设置</button><button class="btn" id="btnSyncRetry" type="button" hidden="">重试</button></div>
   <div class="status" id="status"></div>
-  <div class="toolbar sync-tools">
-    <span class="today-reminders" id="todayReminderActions">
-      </span>
-    </div>
 
   <main>
-    <div id="jsWarn" style="background: rgb(253, 243, 244); border: 2px solid rgb(176, 0, 32); border-radius: 12px; padding: 13px 15px; margin: 12px 0px; font-size: 14px; line-height: 1.65; display: none;">
+    <div id="jsWarn" style="background: rgb(253, 243, 244); border: 2px solid rgb(176, 0, 32); border-radius: 12px; padding: 13px 15px; margin: 12px 0px; font-size: 14px; line-height: 1.65;">
   <b style="font-size:15px">正在加载清单。</b><br>
   如果这段提示一直不消失，请使用 Safari 打开此网址，并确认已允许 JavaScript。
 </div>
@@ -543,7 +537,7 @@ body.export-open > :not(#exportView){display:none!important}
         <button hidden="" class="btn btn-ghost" id="btnAutoShift">自动顺延：关</button>
         <button class="btn btn-ghost" id="btnAddItem">＋ 添加事项</button>
       </div>
-      <div id="timeline"><div class="phase"><h3>清晨</h3><span class="rule"></span><span class="cnt">4/4</span></div><div class="row wait is-paused" data-row="bgfast"><div class="gutter"><button class="timechip" data-time="bgfast" title="修改时间并重新排序；打勾后此时间就是完成时间">07:00</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">测量</span>空腹血糖</div><div class="sub">必须在吃早饭、吃降糖药之前测</div><div class="vrow"><div class="vfield"><label for="f-bgfast">血糖</label><input id="f-bgfast" data-vid="bgfast" data-k="n" inputmode="decimal" placeholder="—" value=""><span class="unit">mmol/L</span></div><span class="refnote">参考 4.4–7.0</span></div><div class="skiprow"><span class="skiptag">今天跳过</span><button class="lnk" data-skip="bgfast" data-v="0">恢复</button></div></div><button class="tick" data-tick="bgfast" disabled="" aria-disabled="true" aria-pressed="false" aria-label="标记完成：空腹血糖">✓</button></div></div></div><div class="row wait is-paused" data-row="temp1"><div class="gutter"><button class="timechip" data-time="temp1" title="修改时间并重新排序；打勾后此时间就是完成时间">07:30</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">测量</span>量体温</div><div class="sub">起床后第一件事，静坐 5 分钟再测</div><div class="vrow"><div class="vfield"><label for="f-temp1">体温</label><input id="f-temp1" data-vid="temp1" data-k="n" inputmode="decimal" placeholder="—" value=""><span class="unit">℃</span></div><span class="refnote">参考 36.0–37.2</span></div><div class="skiprow"><span class="skiptag">今天跳过</span><button class="lnk" data-skip="temp1" data-v="0">恢复</button></div></div><button class="tick" data-tick="temp1" disabled="" aria-disabled="true" aria-pressed="false" aria-label="标记完成：量体温">✓</button></div></div></div><div class="row wait is-paused" data-row="pine1"><div class="gutter"><button class="timechip" data-time="pine1" title="修改时间并重新排序；打勾后此时间就是完成时间">07:40</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">服药</span>桉柠蒎肠溶胶囊（祛痰）<span class="linktag" title="早餐前 30 分钟（随用餐时间联动）">联动</span></div><div class="sub">餐前30分钟 · 凉开水整粒吞服 <span class="linknote">· 早餐前 30 分钟（随用餐时间联动）</span></div><details class="more"><summary>注意事项</summary><div class="note">按厂家用法，安排在<b>对应餐前半小时</b>，用凉开水整粒吞服，禁用热开水，不可打开或嚼破。计划用餐时间变化时，未完成的提醒跟着调整。已服用的不要为改时间补服；若已经开饭却漏服，请先问护士这次如何处理。具体用药以主管医生医嘱为准。</div></details><div class="skiprow"><span class="skiptag">今天跳过</span><button class="lnk" data-skip="pine1" data-v="0">恢复</button></div></div><button class="tick" data-tick="pine1" disabled="" aria-disabled="true" aria-pressed="false" aria-label="标记完成：桉柠蒎肠溶胶囊（祛痰）">✓</button></div></div></div><div class="row done" data-row="acar1"><div class="gutter"><button class="timechip" data-time="acar1" title="修改时间并重新排序；打勾后此时间就是完成时间">08:10</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">服药</span>降糖药 · 阿卡波糖（随餐）</div><div class="sub">和早餐第一口饭一起嚼服</div><details class="more"><summary>注意事项</summary><div class="note">餐前即刻服，或与第一口饭一起嚼服，效果最好。整餐都没吃就不要吃这一次。</div></details><div class="skiprow"><button class="lnk" data-skip="acar1" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="acar1" aria-pressed="true" aria-label="标记完成：降糖药 · 阿卡波糖（随餐）">✓</button></div></div></div><div class="row done" data-row="meal1"><div class="gutter"><button class="timechip" data-time="meal1" title="修改时间并重新排序；打勾后此时间就是完成时间">08:10</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind k-meal">进食</span>早餐</div><div class="sub">记一下大概几点吃的第一口，餐后血糖从这里开始算 2 小时</div><div class="vitals"><div class="vfield"><label for="meal-end-meal1">吃完时间</label><input id="meal-end-meal1" type="time" data-meal-end="meal1" value="" style="width:auto;min-height:44px"></div><button class="btn btn-ghost" data-meal-finish="meal1">刚吃完</button></div><div class="skiprow"><button class="lnk" data-skip="meal1" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="meal1" aria-pressed="true" aria-label="标记完成：早餐">✓</button></div></div></div><div class="row wait is-paused" data-row="nose1"><div class="gutter"><button class="timechip" data-time="nose1" title="修改时间并重新排序；打勾后此时间就是完成时间">待饭后</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">服药</span>通窍鼻炎颗粒（鼻炎）<span class="linktag" title="早餐吃完后 5 分钟">联动</span></div><div class="sub">吃完饭后5分钟 · 温水冲服 <span class="linknote">· 早餐吃完后 5 分钟</span></div><details class="more"><summary>注意事项</summary><div class="note">清单安排在吃完饭后5分钟，温开水冲服。按处方安排剂量、频次和时点；与其他药是否需要间隔，请护士或药师核对。</div></details><div class="skiprow"><span class="skiptag">今天跳过</span><button class="lnk" data-skip="nose1" data-v="0">恢复</button></div></div><button class="tick" data-tick="nose1" disabled="" aria-disabled="true" aria-pressed="false" aria-label="标记完成：通窍鼻炎颗粒（鼻炎）">✓</button></div></div></div><div class="row wait is-paused" data-row="lian1"><div class="gutter"><button class="timechip" data-time="lian1" title="修改时间并重新排序；打勾后此时间就是完成时间">待饭后</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">服药</span>连花清瘟颗粒<span class="linktag" title="早餐吃完后 5 分钟">联动</span></div><div class="sub">吃完饭后5分钟 · 温水冲服 · 一日3次 <span class="linknote">· 早餐吃完后 5 分钟</span></div><details class="more"><summary>注意事项</summary><div class="note">清单安排在吃完饭后5分钟，温开水冲服。剂量、频次及合用药安排按处方；不要用简单错开几分钟代替药师核对。</div></details><div class="skiprow"><span class="skiptag">今天跳过</span><button class="lnk" data-skip="lian1" data-v="0">恢复</button></div></div><button class="tick" data-tick="lian1" disabled="" aria-disabled="true" aria-pressed="false" aria-label="标记完成：连花清瘟颗粒">✓</button></div></div></div><div class="row wait is-paused" data-row="anti1"><div class="gutter"><button class="timechip" data-time="anti1" title="修改时间并重新排序；打勾后此时间就是完成时间">08:25</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">服药</span>抗新冠 · 先诺欣（第 1 次）</div><div class="sub">空腹 · 早餐前 1 小时 · 先诺特韦2片＋利托那韦1片</div><details class="more"><summary>注意事项</summary><div class="note"><b>先诺特韦 2 片 + 利托那韦 1 片，一起吃。</b><br><b>必须空腹：饭前 1 小时或饭后 2 小时</b>，整片吞服，不能掰开嚼碎。<br>每 12 小时一次，<b>连吃满 5 天，中途别停</b>。具体时间以护士安排为准。</div></details><div class="skiprow"><span class="skiptag">今天跳过</span><button class="lnk" data-skip="anti1" data-v="0">恢复</button></div></div><button class="tick" data-tick="anti1" disabled="" aria-disabled="true" aria-pressed="false" aria-label="标记完成：抗新冠 · 先诺欣（第 1 次）">✓</button></div></div></div><div class="row done" data-row="garg1"><div class="gutter"><button class="timechip" data-time="garg1" title="修改时间并重新排序；打勾后此时间就是完成时间">08:25</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">护理</span>漱口 · 复方硼砂含漱液</div><div class="sub">本轮服药后至少10分钟再含漱 · 不可吞服</div><details class="more"><summary>注意事项</summary><div class="note"><b>复方硼砂含漱液只供含漱，吐出，不可吞服。</b>稀释比例、含漱方法及之后多久可饮水进食，按手中这瓶的说明和护士指导。<br>这张清单把漱口放在本轮口服药中最后一项之后至少 10 分钟；这是家属安排操作的缓冲，不是说明书规定的药物间隔。服药时点有变化，未完成的漱口会跟着顺延。</div></details><div class="skiprow"><button class="lnk" data-skip="garg1" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="garg1" aria-pressed="true" aria-label="标记完成：漱口 · 复方硼砂含漱液">✓</button></div></div></div><div class="row done" data-row="bp"><div class="gutter"><button class="timechip" data-time="bp" title="修改时间并重新排序；打勾后此时间就是完成时间">08:25</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">测量</span>测血压 · 心率</div><div class="sub">静坐 5 分钟，袖带与心脏齐平</div><div class="vrow"><div class="vfield"><label for="f-bp-sys">收缩/舒张</label><input id="f-bp-sys" data-vid="bp" data-k="sys" inputmode="numeric" placeholder="—" value="106" style="width:44px"><span class="unit">/</span><input data-vid="bp" data-k="dia" inputmode="numeric" placeholder="—" value="74" style="width:44px"><span class="unit">mmHg</span></div><div class="vfield"><label>心率</label><input data-vid="bp" data-k="hr" inputmode="numeric" placeholder="—" value="84" style="width:40px"><span class="unit">次/分</span></div><span class="refnote">原联合记录：血氧 95%</span><span class="refnote">血压 &lt; 140/90</span></div><details class="more"><summary>注意事项</summary><div class="note">血压若氨氯地平继续服用，这几天要多测；<b>收缩压低于 100 或起身发黑也要说</b>。</div></details><div class="skiprow"><button class="lnk" data-skip="bp" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="bp" aria-pressed="true" aria-label="标记完成：测血压 · 心率">✓</button></div></div></div><div class="phase"><h3>上午</h3><span class="rule"></span><span class="cnt">3/3</span></div><div class="row done" data-row="bg1"><div class="gutter"><button class="timechip" data-time="bg1" title="修改时间并重新排序；打勾后此时间就是完成时间">10:10</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">测量</span>早餐后 2 小时血糖</div><div class="sub">从早餐第一口算起满 2 小时测，别提前也别拖</div><div class="vrow"><div class="vfield"><label for="f-bg1">血糖</label><input id="f-bg1" data-vid="bg1" data-k="n" inputmode="decimal" placeholder="—" value="6.8"><span class="unit">mmol/L</span></div><span class="refnote">参考 3.9–10.0</span></div><div class="skiprow"><button class="lnk" data-skip="bg1" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="bg1" aria-pressed="true" aria-label="标记完成：早餐后 2 小时血糖">✓</button></div></div></div><div class="row done" data-row="cmtxrg1mu"><div class="gutter"><button class="timechip" data-time="cmtxrg1mu" title="修改时间并重新排序；打勾后此时间就是完成时间">10:22</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">测量</span>测体温<span class="linktag" style="background:#5b21b6">自加</span></div><div class="sub"><button class="btn btn-ghost" style="padding:1px 7px;font-size:11.5px" data-delitem="cmtxrg1mu">删除</button></div><div class="vrow"><div class="vfield out"><label for="f-cmtxrg1mu">体温</label><input id="f-cmtxrg1mu" data-vid="cmtxrg1mu" data-k="n" inputmode="decimal" placeholder="—" value="37.3"><span class="unit">℃</span></div><span class="refnote">参考 36.0–37.2</span></div><div class="skiprow"><button class="lnk" data-skip="cmtxrg1mu" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="cmtxrg1mu" aria-pressed="true" aria-label="标记完成：测体温">✓</button></div></div></div><div class="row done" data-row="iv1"><div class="gutter"><button class="timechip" data-time="iv1" title="修改时间并重新排序；打勾后此时间就是完成时间">10:25</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind k-iv">输液</span>上午输液 · 2 瓶（左氧氟沙星氯化钠针）</div><div class="sub"><button class="btn btn-ghost" style="padding:1px 7px;font-size:12px" data-drug="iv1">改药名</button> <button class="btn btn-ghost" style="padding:1px 7px;font-size:12px" data-bottles="iv1">改瓶数</button></div><div class="ivwrap" data-ivwrap="iv1"></div><details class="more"><summary>注意事项</summary><div class="note">输液全程留意有没有<b>皮疹、心慌、胸闷、发抖</b>，有就马上按铃。手背扎针处鼓包、发凉、发疼也要叫护士，可能是渗液了。</div></details><div class="skiprow"><button class="lnk" data-skip="iv1" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="iv1" aria-pressed="true" aria-label="标记完成：上午输液 · 2 瓶（左氧氟沙星氯化钠针）">✓</button></div></div></div><div class="phase"><h3>中午</h3><span class="rule"></span><span class="cnt">0/8</span></div><div class="row due" data-row="bpmed"><div class="gutter"><button class="timechip" data-time="bpmed" title="修改时间并重新排序；打勾后此时间就是完成时间">11:30</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">服药</span>降压药 · 厄贝沙坦片 0.15g</div><div class="sub">整片吞服，每天固定时间</div><details class="more"><summary>注意事项</summary><div class="note"><b>已由苯磺酸氨氯地平换为厄贝沙坦片 0.15g。</b>沙坦类，<b>不经 CYP3A4 代谢，与抗新冠药先诺欣没有那条"禁止联用"的问题</b>——换药正好绕开了原来的顾虑。<br>每天固定时间、整片吞服。<br><b>留意三件事：</b>①起身、下床慢一点，防体位性低血压（他入院时血压才 100/67）；②这类药可能升高血钾，<b>如果医生查电解质，问一下血钾</b>；③他肾上有占位，沙坦类对肾功能有影响，<b>用药期间的肾功能复查不要漏</b>。<br>不要自行停药。</div></details><div class="skiprow"><button class="lnk" data-skip="bpmed" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="bpmed" aria-pressed="false" aria-label="标记完成：降压药 · 厄贝沙坦片 0.15g">✓</button></div></div></div><div class="row late" data-row="neb"><div class="gutter"><button class="timechip" data-time="neb" title="修改时间并重新排序；打勾后此时间就是完成时间">12:25</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">护理</span>雾化</div><div class="sub">坐直、含住口含器慢吸慢呼</div><details class="more"><summary>注意事项</summary><div class="note">雾化完<b>一定要漱口、擦脸</b>，尤其含激素的雾化药，不漱口容易长口腔真菌。做完趁着痰稀，拍背帮着咳出来。</div></details><div class="skiprow"><button class="lnk" data-skip="neb" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="neb" aria-pressed="false" aria-label="标记完成：雾化">✓</button></div></div></div><div class="row late" data-row="pine2"><div class="gutter"><button class="timechip" data-time="pine2" title="修改时间并重新排序；打勾后此时间就是完成时间">12:25</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">服药</span>桉柠蒎肠溶胶囊（祛痰）<span class="linktag" title="午餐前 30 分钟（随用餐时间联动）">联动</span></div><div class="sub">餐前30分钟 · 凉开水整粒吞服 <span class="linknote">· 午餐前 30 分钟（随用餐时间联动）</span></div><details class="more"><summary>注意事项</summary><div class="note">按厂家用法，安排在<b>对应餐前半小时</b>，用凉开水整粒吞服，禁用热开水，不可打开或嚼破。计划用餐时间变化时，未完成的提醒跟着调整。已服用的不要为改时间补服；若已经开饭却漏服，请先问护士这次如何处理。具体用药以主管医生医嘱为准。</div></details><div class="skiprow"><button class="lnk" data-skip="pine2" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="pine2" aria-pressed="false" aria-label="标记完成：桉柠蒎肠溶胶囊（祛痰）">✓</button></div></div></div><div class="row late" data-row="temp2"><div class="gutter"><button class="timechip" data-time="temp2" title="修改时间并重新排序；打勾后此时间就是完成时间">12:35</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">测量</span>量体温</div><div class="sub">输液后这次最重要，看有没有反跳发热</div><div class="vrow"><div class="vfield"><label for="f-temp2">体温</label><input id="f-temp2" data-vid="temp2" data-k="n" inputmode="decimal" placeholder="—" value=""><span class="unit">℃</span></div><span class="refnote">参考 36.0–37.2</span></div><div class="skiprow"><button class="lnk" data-skip="temp2" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="temp2" aria-pressed="false" aria-label="标记完成：量体温">✓</button></div></div></div><div class="row late" data-row="acar2"><div class="gutter"><button class="timechip" data-time="acar2" title="修改时间并重新排序；打勾后此时间就是完成时间">12:55</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">服药</span>降糖药 · 阿卡波糖（随餐）<span class="linktag" title="与午餐第一口同时（修改用餐时间会一起调整）">联动</span></div><div class="sub">和午餐第一口饭一起嚼服 <span class="linknote">· 与午餐第一口同时（修改用餐时间会一起调整）</span></div><details class="more"><summary>注意事项</summary><div class="note">餐前即刻服，或与第一口饭一起嚼服，效果最好。整餐都没吃就不要吃这一次。</div></details><div class="skiprow"><button class="lnk" data-skip="acar2" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="acar2" aria-pressed="false" aria-label="标记完成：降糖药 · 阿卡波糖（随餐）">✓</button></div></div></div><div class="row late" data-row="meal2"><div class="gutter"><button class="timechip" data-time="meal2" title="修改时间并重新排序；打勾后此时间就是完成时间">12:55</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind k-meal">进食</span>午餐</div><div class="sub">餐后血糖从第一口开始算 2 小时</div><div class="vitals"><div class="vfield"><label for="meal-end-meal2">吃完时间</label><input id="meal-end-meal2" type="time" data-meal-end="meal2" value="" style="width:auto;min-height:44px"></div><button class="btn btn-ghost" data-meal-finish="meal2">刚吃完</button></div><div class="skiprow"><button class="lnk" data-skip="meal2" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="meal2" aria-pressed="false" aria-label="标记完成：午餐">✓</button></div></div></div><div class="row wait" data-row="nose2"><div class="gutter"><button class="timechip" data-time="nose2" title="修改时间并重新排序；打勾后此时间就是完成时间">待饭后</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">服药</span>通窍鼻炎颗粒（鼻炎）<span class="linktag" title="午餐吃完后 5 分钟">联动</span></div><div class="sub">吃完饭后5分钟 · 温水冲服 <span class="linknote">· 午餐吃完后 5 分钟</span></div><details class="more"><summary>注意事项</summary><div class="note">清单安排在吃完饭后5分钟，温开水冲服。按处方安排剂量、频次和时点；与其他药是否需要间隔，请护士或药师核对。</div></details><div class="skiprow"><button class="lnk" data-skip="nose2" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="nose2" aria-pressed="false" aria-label="标记完成：通窍鼻炎颗粒（鼻炎）">✓</button></div></div></div><div class="row wait is-paused" data-row="lian2"><div class="gutter"><button class="timechip" data-time="lian2" title="修改时间并重新排序；打勾后此时间就是完成时间">待饭后</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">服药</span>连花清瘟颗粒<span class="linktag" title="午餐吃完后 5 分钟">联动</span></div><div class="sub">吃完饭后5分钟 · 温水冲服 <span class="linknote">· 午餐吃完后 5 分钟</span></div><details class="more"><summary>注意事项</summary><div class="note">清单安排在吃完饭后5分钟，温开水冲服。剂量、频次及合用药安排按处方；不要用简单错开几分钟代替药师核对。</div></details><div class="skiprow"><span class="skiptag">今天跳过</span><button class="lnk" data-skip="lian2" data-v="0">恢复</button></div></div><button class="tick" data-tick="lian2" disabled="" aria-disabled="true" aria-pressed="false" aria-label="标记完成：连花清瘟颗粒">✓</button></div></div></div><div class="row wait" data-row="garg2"><div class="gutter"><button class="timechip" data-time="garg2" title="修改时间并重新排序；打勾后此时间就是完成时间">待饭后</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">护理</span>漱口 · 复方硼砂含漱液<span class="linktag" title="跟着本轮最后一项口服药，之后至少 10 分钟">联动</span></div><div class="sub">本轮服药后至少10分钟再含漱 · 不可吞服 <span class="linknote">· 跟着本轮最后一项口服药，之后至少 10 分钟</span></div><details class="more"><summary>注意事项</summary><div class="note"><b>复方硼砂含漱液只供含漱，吐出，不可吞服。</b>稀释比例、含漱方法及之后多久可饮水进食，按手中这瓶的说明和护士指导。<br>这张清单把漱口放在本轮口服药中最后一项之后至少 10 分钟；这是家属安排操作的缓冲，不是说明书规定的药物间隔。服药时点有变化，未完成的漱口会跟着顺延。</div></details><div class="skiprow"><button class="lnk" data-skip="garg2" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="garg2" aria-pressed="false" aria-label="标记完成：漱口 · 复方硼砂含漱液">✓</button></div></div></div><div class="phase"><h3>下午</h3><span class="rule"></span><span class="cnt">0/3</span></div><div class="row late" data-row="oxygen"><div class="gutter"><button class="timechip" data-time="oxygen" title="修改时间并重新排序；打勾后此时间就是完成时间">14:10</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">测量</span>测血氧</div><div class="sub">血氧夹手指测</div><div class="vrow"><div class="vfield"><label for="f-oxygen-spo2">血氧</label><input id="f-oxygen-spo2" data-vid="oxygen" data-k="spo2" inputmode="numeric" placeholder="—" value="" style="width:54px"><span class="unit">%</span></div><span class="refnote">血氧 ≥ 95%</span></div><details class="more"><summary>注意事项</summary><div class="note"><b>持续低于 90% 且不回升，立刻报告。</b></div></details><div class="skiprow"><button class="lnk" data-skip="oxygen" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="oxygen" aria-pressed="false" aria-label="标记完成：测血氧">✓</button></div></div></div><div class="row late" data-row="bg2"><div class="gutter"><button class="timechip" data-time="bg2" title="修改时间并重新排序；打勾后此时间就是完成时间">14:55</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">测量</span>午餐后 2 小时血糖<span class="linktag" title="跟着「午餐」后 2 小时">联动</span></div><div class="sub">从午餐第一口算起满 2 小时 <span class="linknote">· 跟着「午餐」后 2 小时</span></div><div class="vrow"><div class="vfield"><label for="f-bg2">血糖</label><input id="f-bg2" data-vid="bg2" data-k="n" inputmode="decimal" placeholder="—" value=""><span class="unit">mmol/L</span></div><span class="refnote">参考 3.9–10.0</span></div><div class="skiprow"><button class="lnk" data-skip="bg2" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="bg2" aria-pressed="false" aria-label="标记完成：午餐后 2 小时血糖">✓</button></div></div></div><div class="row wait" data-row="iv2"><div class="gutter"><button class="timechip" data-time="iv2" title="修改时间并重新排序；打勾后此时间就是完成时间">15:37</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind k-iv">输液</span>午后输液 · 1 瓶（氯化钠注射液）</div><div class="sub">抗感染 · 09.07 起由头孢类换用 · <button class="btn btn-ghost" style="padding:1px 7px;font-size:12px" data-drug="iv2">改药名</button> <button class="btn btn-ghost" style="padding:1px 7px;font-size:12px" data-bottles="iv2">改瓶数</button></div><div class="ivwrap" data-ivwrap="iv2"><div class="ivbar"><button class="btn btn-primary" data-ivstart="iv2">开始输液</button><span class="ivmeta">每瓶 <button class="linkbtn" data-ivdur="iv2">15 分钟</button>后提醒</span></div></div><details class="more"><summary>注意事项</summary><div class="note"><b>喹诺酮类，不是头孢，禁酒的要求依旧保留。</b><br>这几天特别留意两件事：<b>①跟腱等部位疼痛肿胀；②突发剧烈胸痛或背痛（撕裂样）</b>——他 CT 上有升主动脉增宽 37mm 和主动脉硬化，这类药有主动脉风险警示，出现胸背剧痛<b>立刻叫人</b>。<br>另外这药会影响血糖，高低都可能，这几天血糖要多测。前 15 分钟盯紧有没有皮疹、喉咙发紧。</div></details><div class="skiprow"><button class="lnk" data-skip="iv2" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="iv2" aria-pressed="false" aria-label="标记完成：午后输液 · 1 瓶（氯化钠注射液）">✓</button></div></div></div><div class="phase"><h3>傍晚</h3><span class="rule"></span><span class="cnt">0/10</span></div><div class="row wait" data-row="pine3"><div class="gutter"><button class="timechip" data-time="pine3" title="修改时间并重新排序；打勾后此时间就是完成时间">16:47</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">服药</span>桉柠蒎肠溶胶囊（祛痰）<span class="linktag" title="晚餐前 30 分钟（随用餐时间联动）">联动</span></div><div class="sub">餐前30分钟 · 凉开水整粒吞服 <span class="linknote">· 晚餐前 30 分钟（随用餐时间联动）</span></div><details class="more"><summary>注意事项</summary><div class="note">按厂家用法，安排在<b>对应餐前半小时</b>，用凉开水整粒吞服，禁用热开水，不可打开或嚼破。计划用餐时间变化时，未完成的提醒跟着调整。已服用的不要为改时间补服；若已经开饭却漏服，请先问护士这次如何处理。具体用药以主管医生医嘱为准。</div></details><div class="skiprow"><button class="lnk" data-skip="pine3" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="pine3" aria-pressed="false" aria-label="标记完成：桉柠蒎肠溶胶囊（祛痰）">✓</button></div></div></div><div class="row wait" data-row="acar3"><div class="gutter"><button class="timechip" data-time="acar3" title="修改时间并重新排序；打勾后此时间就是完成时间">17:17</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">服药</span>降糖药 · 阿卡波糖（随餐）<span class="linktag" title="与晚餐第一口同时（修改用餐时间会一起调整）">联动</span></div><div class="sub">和晚餐第一口饭一起嚼服 <span class="linknote">· 与晚餐第一口同时（修改用餐时间会一起调整）</span></div><details class="more"><summary>注意事项</summary><div class="note">餐前即刻服，或与第一口饭一起嚼服，效果最好。整餐都没吃就不要吃这一次。</div></details><div class="skiprow"><button class="lnk" data-skip="acar3" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="acar3" aria-pressed="false" aria-label="标记完成：降糖药 · 阿卡波糖（随餐）">✓</button></div></div></div><div class="row wait" data-row="meal3"><div class="gutter"><button class="timechip" data-time="meal3" title="修改时间并重新排序；打勾后此时间就是完成时间">17:17</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind k-meal">进食</span>晚餐</div><div class="sub">餐后血糖从第一口开始算 2 小时</div><div class="vitals"><div class="vfield"><label for="meal-end-meal3">吃完时间</label><input id="meal-end-meal3" type="time" data-meal-end="meal3" value="" style="width:auto;min-height:44px"></div><button class="btn btn-ghost" data-meal-finish="meal3">刚吃完</button></div><div class="skiprow"><button class="lnk" data-skip="meal3" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="meal3" aria-pressed="false" aria-label="标记完成：晚餐">✓</button></div></div></div><div class="row wait" data-row="nose3"><div class="gutter"><button class="timechip" data-time="nose3" title="修改时间并重新排序；打勾后此时间就是完成时间">待饭后</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">服药</span>通窍鼻炎颗粒（鼻炎）<span class="linktag" title="晚餐吃完后 5 分钟">联动</span></div><div class="sub">吃完饭后5分钟 · 温水冲服 <span class="linknote">· 晚餐吃完后 5 分钟</span></div><details class="more"><summary>注意事项</summary><div class="note">清单安排在吃完饭后5分钟，温开水冲服。按处方安排剂量、频次和时点；与其他药是否需要间隔，请护士或药师核对。</div></details><div class="skiprow"><button class="lnk" data-skip="nose3" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="nose3" aria-pressed="false" aria-label="标记完成：通窍鼻炎颗粒（鼻炎）">✓</button></div></div></div><div class="row wait" data-row="lian3"><div class="gutter"><button class="timechip" data-time="lian3" title="修改时间并重新排序；打勾后此时间就是完成时间">待饭后</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">服药</span>连花清瘟颗粒<span class="linktag" title="晚餐吃完后 5 分钟">联动</span></div><div class="sub">吃完饭后5分钟 · 温水冲服 <span class="linknote">· 晚餐吃完后 5 分钟</span></div><details class="more"><summary>注意事项</summary><div class="note">清单安排在吃完饭后5分钟，温开水冲服。剂量、频次及合用药安排按处方；不要用简单错开几分钟代替药师核对。</div></details><div class="skiprow"><button class="lnk" data-skip="lian3" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="lian3" aria-pressed="false" aria-label="标记完成：连花清瘟颗粒">✓</button></div></div></div><div class="row wait" data-row="garg3"><div class="gutter"><button class="timechip" data-time="garg3" title="修改时间并重新排序；打勾后此时间就是完成时间">待饭后</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">护理</span>漱口 · 复方硼砂含漱液<span class="linktag" title="跟着本轮最后一项口服药，之后至少 10 分钟">联动</span></div><div class="sub">本轮服药后至少10分钟再含漱 · 不可吞服 <span class="linknote">· 跟着本轮最后一项口服药，之后至少 10 分钟</span></div><details class="more"><summary>注意事项</summary><div class="note"><b>复方硼砂含漱液只供含漱，吐出，不可吞服。</b>稀释比例、含漱方法及之后多久可饮水进食，按手中这瓶的说明和护士指导。<br>这张清单把漱口放在本轮口服药中最后一项之后至少 10 分钟；这是家属安排操作的缓冲，不是说明书规定的药物间隔。服药时点有变化，未完成的漱口会跟着顺延。</div></details><div class="skiprow"><button class="lnk" data-skip="garg3" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="garg3" aria-pressed="false" aria-label="标记完成：漱口 · 复方硼砂含漱液">✓</button></div></div></div><div class="row wait" data-row="iv3"><div class="gutter"><button class="timechip" data-time="iv3" title="修改时间并重新排序；打勾后此时间就是完成时间">18:17</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind k-iv">输液</span>晚间输液 · 1 瓶（化痰药）</div><div class="sub"><button class="btn btn-ghost" style="padding:1px 7px;font-size:12px" data-drug="iv3">改药名</button> <button class="btn btn-ghost" style="padding:1px 7px;font-size:12px" data-bottles="iv3">改瓶数</button></div><div class="ivwrap" data-ivwrap="iv3"><div class="ivbar"><button class="btn btn-primary" data-ivstart="iv3">开始输液</button><span class="ivmeta">每瓶 <button class="linkbtn" data-ivdur="iv3">60 分钟</button>后提醒</span></div></div><details class="more"><summary>注意事项</summary><div class="note">化痰药输完痰会变多变稀，是正常的——<b>趁这会儿多拍背、多咳几次</b>，痰咳出来比压着强。</div></details><div class="skiprow"><button class="lnk" data-skip="iv3" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="iv3" aria-pressed="false" aria-label="标记完成：晚间输液 · 1 瓶（化痰药）">✓</button></div></div></div><div class="row wait" data-row="bg3"><div class="gutter"><button class="timechip" data-time="bg3" title="修改时间并重新排序；打勾后此时间就是完成时间">19:17</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">测量</span>晚餐后 2 小时血糖<span class="linktag" title="跟着「晚餐」后 2 小时">联动</span></div><div class="sub">从晚餐第一口算起满 2 小时 <span class="linknote">· 跟着「晚餐」后 2 小时</span></div><div class="vrow"><div class="vfield"><label for="f-bg3">血糖</label><input id="f-bg3" data-vid="bg3" data-k="n" inputmode="decimal" placeholder="—" value=""><span class="unit">mmol/L</span></div><span class="refnote">参考 3.9–10.0</span></div><div class="skiprow"><button class="lnk" data-skip="bg3" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="bg3" aria-pressed="false" aria-label="标记完成：晚餐后 2 小时血糖">✓</button></div></div></div><div class="row wait" data-row="temp3"><div class="gutter"><button class="timechip" data-time="temp3" title="修改时间并重新排序；打勾后此时间就是完成时间">19:27</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">测量</span>量体温</div><div class="sub">一天里最容易发热的时段，别漏</div><div class="vrow"><div class="vfield"><label for="f-temp3">体温</label><input id="f-temp3" data-vid="temp3" data-k="n" inputmode="decimal" placeholder="—" value=""><span class="unit">℃</span></div><span class="refnote">参考 36.0–37.2</span></div><div class="skiprow"><button class="lnk" data-skip="temp3" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="temp3" aria-pressed="false" aria-label="标记完成：量体温">✓</button></div></div></div><div class="row wait" data-row="anti2"><div class="gutter"><button class="timechip" data-time="anti2" title="修改时间并重新排序；打勾后此时间就是完成时间">20:25</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">服药</span>抗新冠 · 先诺欣（第 2 次）<span class="linktag" title="跟着「抗新冠」后 12 小时">联动</span></div><div class="sub">空腹 · 晚餐后满 2 小时 · 先诺特韦2片＋利托那韦1片 <span class="linknote">· 跟着「抗新冠」后 12 小时</span></div><details class="more"><summary>注意事项</summary><div class="note"><b>先诺特韦 2 片 + 利托那韦 1 片，一起吃。</b><br><b>必须空腹：饭前 1 小时或饭后 2 小时</b>，整片吞服，不能掰开嚼碎。<br>每 12 小时一次，<b>连吃满 5 天，中途别停</b>。具体时间以护士安排为准。</div></details><div class="skiprow"><button class="lnk" data-skip="anti2" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="anti2" aria-pressed="false" aria-label="标记完成：抗新冠 · 先诺欣（第 2 次）">✓</button></div></div></div><div class="phase"><h3>睡前</h3><span class="rule"></span><span class="cnt">0/1</span></div><div class="row wait" data-row="clopi"><div class="gutter"><button class="timechip" data-time="clopi" title="修改时间并重新排序；打勾后此时间就是完成时间">21:17</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">服药</span>抗血小板 · 硫酸氢氯吡格雷片</div><div class="sub">每天固定时间，一片，防脑梗复发</div><details class="more"><summary>注意事项</summary><div class="note"><b>预防脑梗复发的核心药，一天都不能漏。</b>每天固定时间吃（现改到睡前）。<b>五天后阿托伐他汀接回来时，两个药同在 21:00，可以一起吃，互不影响——但别漏掉其中一个。</b>留意有没有牙龈出血、皮下瘀斑、黑便，有就报告。<b>更要留意的是：手脚突然没力气、嘴角歪、说话不清 → 立刻叫人。</b></div></details><div class="skiprow"><button class="lnk" data-skip="clopi" data-v="1">今天跳过</button></div></div><button class="tick" data-tick="clopi" aria-pressed="false" aria-label="标记完成：抗血小板 · 硫酸氢氯吡格雷片">✓</button></div></div></div><div class="row wait is-paused" data-row="statin"><div class="gutter"><button class="timechip" data-time="statin" title="修改时间并重新排序；打勾后此时间就是完成时间">21:17</button></div><div class="card"><div class="cardhead"><div class="cardbody"><div class="ttl"><span class="kind ">服药</span>睡前 · 阿托伐他汀钙片<span class="pausetag">停用中</span></div><div class="sub">抗病毒这 5 天不吃 —— 疗程结束当天接回</div><div class="pausebar"><button data-pause="statin" data-v="1" class="on">今天停用</button><button data-pause="statin" data-v="0" class="">今天照常吃</button><span style="font-size:12px;color:var(--ink-3);align-self:center">医生已决定：抗病毒 5 天内停用</span></div><details class="more"><summary>注意事项</summary><div class="note"><b>⚠ 医生已决定：抗病毒药这 5 天暂停阿托伐他汀。</b>抗病毒药会升高它的血药浓度，有肌肉损伤风险。<br><b>疗程结束当天就可以接着吃回去——这件事很容易忘，请单独记下来。</b><br>停药这几天仍要留意肌肉酸痛无力、尿色变深。</div></details><div class="skiprow"></div></div><button class="tick" data-tick="statin" disabled="" aria-disabled="true" aria-pressed="false" aria-label="标记完成：睡前 · 阿托伐他汀钙片">✓</button></div></div></div></div>
+      <div id="timeline"></div>
       <div class="toolbar today-footer">
         <button class="btn" id="btnReset">重置今天</button>
         <button class="btn" id="btnOpenMeds" aria-controls="viewMeds">用药说明</button>
@@ -580,7 +574,7 @@ body.export-open > :not(#exportView){display:none!important}
     <section id="viewMeds" aria-label="用药说明" hidden="">
       <div class="toolbar"><button class="btn" id="btnMedsBack">返回今日清单</button></div>
       <p class="panelnote">下面是这张清单里每种药的常规用法要点，方便陪护对照。以主管医生和护士的当面医嘱为准；用法有出入时先问护士，不要自己改。</p>
-      <div id="medList"><div class="med"><h4>苯磺酸氨氯地平片</h4><div class="gen">Amlodipine Besylate · 降压 · 每日 1 次</div><ul><li>每天固定时间吃，长效药，漏一次血压能波动一整天。</li><li>整片吞，不掰不嚼。</li><li>常见副作用是脚踝水肿、脸潮红、心跳略快，告诉医生即可，不要自行停药。</li><li>起身、下床慢一点，防体位性低血压摔倒。</li></ul></div><div class="med"><h4>阿卡波糖</h4><div class="gen">Acarbose · 降糖 · 每日 3 次，随餐</div><ul><li><b>餐前即刻或与第一口饭同嚼</b>，饭吃完再补吃基本没用。</li><li>这一餐没吃，这次药就跳过。</li><li>主要副作用是腹胀、排气多，一般 1–2 周会缓解。</li><li><b>如果发生低血糖（心慌、手抖、出冷汗），必须吃葡萄糖或含糖饮料</b>——吃普通白砂糖、馒头见效慢，因为这药就是挡住淀粉分解的。</li></ul></div><div class="med"><h4>桉柠蒎肠溶软胶囊</h4><div class="gen">Myrtol · 祛痰 · 每日 3 次</div><ul><li><b>整粒吞服、凉开水送</b>，不能打开、嚼碎，也别用热水。</li><li>按对应餐前30分钟安排，随计划用餐时间联动；已服用的不要为改时间补服，已开饭却漏服时先问护士如何处理。</li><li>服后可能有轻微胃部不适或打嗝带薄荷味，属常见。</li></ul></div><div class="med"><h4>通窍鼻炎颗粒</h4><div class="gen">中成药 · 鼻炎 · 每日 3 次</div><ul><li>温开水冲服。</li><li>与其他药合用的时点和间隔，按处方及药师核对结果安排。</li><li>含麻黄类成分的中成药可能升血压、影响睡眠——他本身是高血压 3 级，如果吃后心慌或血压偏高，告诉医生。</li></ul></div><div class="med"><h4>复方硼砂含漱液</h4><div class="gen">朵贝尔氏液 · 外用含漱 · 每日 3 次</div><ul><li><b>按所用制剂的说明和护士指导稀释、含漱并吐出，不可吞服。</b></li><li>按这瓶药的说明和护士指导稀释、含漱并吐出；漱口放在本轮服药结束后，清单预留10分钟操作缓冲。</li><li>口腔或咽部有破溃、疼痛加重时告诉护士。</li></ul></div><div class="med"><h4>阿托伐他汀钙片</h4><div class="gen">Atorvastatin · 调脂 / 脑梗二级预防 · 睡前 1 次</div><ul><li>睡前服，夜间胆固醇合成最活跃。</li><li><b>不能配西柚、西柚汁。</b></li><li>出现不明原因的肌肉酸痛、乏力、尿色变浓茶色，马上报告医生（查肌酸激酶）。</li><li>需要定期查肝功能和血脂，别自己停。</li></ul></div><div class="med"><h4>静脉输液</h4><div class="gen">上午 2 瓶 · 午后 1 瓶（头孢类）· 晚间 1 瓶（化痰）</div><ul><li>上午和晚间两组的具体药名<b>待确认</b>——问护士后在清单里点“填写药名”补上。</li><li>头孢类：<b>用药期间及停药后一周禁酒</b>，包括含酒精的口服液和漱口水。</li><li>每组输液开始后前 15 分钟守着，看有无皮疹、胸闷、寒战。</li><li>扎针处鼓包、发凉、疼痛 → 按铃，可能渗液。</li></ul></div></div>
+      <div id="medList"></div>
     </section>
   </main>
 
@@ -751,17 +745,12 @@ const hhmmNow = ()=>{ const d=new Date(); return pad(d.getHours())+":"+pad(d.get
 const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const WEEK = ["星期日","星期一","星期二","星期三","星期四","星期五","星期六"];
 
-/* ============ 存储：db 优先，localStorage 兜底 ============ */
+/* ============ 存储：GitHub 正式记录 + 本机缓存 / 持久待同步队列 ============ */
+let storageWarning="", storageReadFailed=false;
 const LS = {
-  get(k){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch(e){ return null; } },
-  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} },
-  keys(pre){ const out=[]; try{ for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.startsWith(pre)) out.push(k);} }catch(e){} return out; },
+  get(k){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):null; }catch(e){storageReadFailed=true;storageWarning="本机缓存读取失败，请勿清理浏览器数据；先备份记录";return null;} },
+  set(k,v){ try{localStorage.setItem(k,JSON.stringify(v));return true;}catch(e){storageWarning="本机保存失败，未上传的修改仅在当前页面；请勿关闭，先联网同步或导出备份";return false;} },
 };
-const DKEY = d => "care.day."+d;
-const CKEY = "care.config";
-
-let db = null;
-let synced = false;
 
 const state = {
   date: todayKey(),
@@ -772,16 +761,20 @@ const state = {
 const clone=x=>JSON.parse(JSON.stringify(x));
 const defaultConfig=clone(state.config);
 let sharedDoc={days:{},config:{},vitals:{}}, cloudReady=false, cloudBusy=false, pullBusy=false;
-let pending=LS.get("care.shared.pending.v2")||{}, inFlight=LS.get("care.shared.inflight.v2")||null;
-let queueTimer=null, remoteMap={}, pendingSerial=Date.now();
-// 连着勾几项时合并成一次提交。GitHub 每小时限 500 次写，也是为了别把仓库历史堆爆。
-// 提交频率实际由轮询周期决定（每次轮询会顺带推送攒着的改动）。
-// 20 秒一次：GitHub 每小时限 500 次写，也避免仓库历史堆太快。
+const SYNC_STORE_KEY="care.shared.sync.v3";
+const savedSync=LS.get(SYNC_STORE_KEY);
+let pending=savedSync?.pending||LS.get("care.shared.pending.v2")||{};
+let inFlight=savedSync?savedSync.inFlight:LS.get("care.shared.inflight.v2");
+let queueTimer=null, remoteMap=savedSync?.entries||LS.get("care.shared.cache.v2")||{}, pendingSerial=Date.now();
+let syncConflicts=[], syncSettingsBusy=false;
+// 同一份本机快照原子保存缓存、队列和批次；旧键保留，不删除历史副本。
+for(const op of inFlight?.ops||[]){if(!pending[op.key]||pending[op.key].serial<op.serial){const {key,...p}=op;pending[key]=p;}}
+for(const p of Object.values(pending))pendingSerial=Math.max(pendingSerial,Number(p.serial)||0);
+// 连续编辑后 3 秒合并提交；前台每 20 秒拉取，切走时尽力提交。
 const PULL_INTERVAL_MS=20000;
 const SYNC_DEBOUNCE_MS=3000;
 function syncMessage(s,failed=false){
-  // 本地模式下绝不能显示"已同步"——会让人以为数据已经共享，实际只在本机
-  if(typeof localMode!=="undefined"&&localMode&&/已同步|共同记录/.test(s))s=localModeMsg||"本地模式 · 记录只存在这台手机上";
+  if(storageWarning){s+=" · "+storageWarning;failed=true;}
   const el=document.getElementById("syncStatus");if(el.textContent!==s)el.textContent=s;
   const retry=document.getElementById("btnSyncRetry");if(retry)retry.hidden=!failed;
 }
@@ -806,7 +799,7 @@ function configWire(config){
   c.customById=Object.fromEntries((c.custom||[]).map(x=>[x.id,x]));delete c.custom;return c;
 }
 function configFromWire(c){return Object.assign(clone(defaultConfig),c,{custom:Object.values(c.customById||{}),autoShift:false});}
-function persistQueue(){LS.set("care.shared.pending.v2",pending);LS.set("care.shared.inflight.v2",inFlight);}
+function persistQueue(){const ok=LS.set(SYNC_STORE_KEY,{entries:remoteMap,pending,inFlight});if(ok&&!storageReadFailed)storageWarning="";return ok;}
 function effectiveMap(){
   const map=clone(remoteMap);
   for(const [k,p] of Object.entries(pending)){if(p.delete)delete map[k];else map[k]=p.value;}
@@ -844,119 +837,162 @@ function queueScope(path,value){
   const keys=new Set([...Object.keys(old).filter(k=>k.startsWith(prefix)),...Object.keys(next)]);
   for(const k of keys){
     if(JSON.stringify(old[k])===JSON.stringify(next[k]))continue;
-    pending[k]=next[k]===undefined?{delete:true,serial:++pendingSerial}:{value:clone(next[k]),serial:++pendingSerial};
+    const previous=pending[k];
+    const base=previous&&Object.hasOwn(previous,'basePresent')?{basePresent:previous.basePresent,...(previous.basePresent?{base:clone(previous.base)}:{})}:{basePresent:Object.hasOwn(remoteMap,k),...(Object.hasOwn(remoteMap,k)?{base:clone(remoteMap[k])}:{})};
+    pending[k]=next[k]===undefined?{delete:true,serial:++pendingSerial,...base}:{value:clone(next[k]),serial:++pendingSerial,...base};
   }
   sharedDoc=unflatten(effectiveMap());sharedDoc.config=configWire(configFromWire(sharedDoc.config));persistQueue();
   if(Object.keys(pending).length){syncMessage("有修改待同步…");clearTimeout(queueTimer);queueTimer=setTimeout(flushCloud,SYNC_DEBOUNCE_MS);}
 }
-const LOCAL_KEY="care.local.entries.v1";
 const GH_CFG_KEY="care.sync.github.v1";
-let localMode=false;
 const GH_REPO="SYQ1001/dc-9f2a-data";
 let ghCfg=LS.get(GH_CFG_KEY)||{token:""};
-if(ghCfg&&ghCfg.repo)delete ghCfg.repo;   // 旧格式里存过仓库名，现在写死在代码里
+if(ghCfg&&ghCfg.repo)delete ghCfg.repo;
 let ghEtag=null, ghSha=null, ghCache=null;
-
-function localEntries(){return LS.get(LOCAL_KEY)||{};}
-function localApply(batch){
-  const map=localEntries();
-  for(const op of (batch&&batch.ops)||[]){ if(op.delete)delete map[op.key]; else map[op.key]=op.value; }
-  LS.set(LOCAL_KEY,map); return {entries:map};
-}
-let localModeMsg="";
-function markLocal(msg){
-  localModeMsg=msg||"本地模式 · 记录只存在这台手机上";
-  if(!localMode){localMode=true;syncMessage(localModeMsg);}
-}
 const ghOn=()=>!!ghCfg.token;
-const b64ToStr=b=>new TextDecoder().decode(Uint8Array.from(atob(String(b).replace(/\s/g,"")),c=>c.charCodeAt(0)));
+const b64ToStr=b=>new TextDecoder("utf-8",{fatal:true}).decode(Uint8Array.from(atob(String(b).replace(/\s/g,"")),c=>c.charCodeAt(0)));
 const strToB64=s=>{let bin="";for(const b of new TextEncoder().encode(s))bin+=String.fromCharCode(b);return btoa(bin);};
 const ghURL=()=>"https://api.github.com/repos/"+GH_REPO+"/contents/data.json";
 const ghHead=()=>({"Authorization":"Bearer "+ghCfg.token,"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"});
-
-async function ghRead(force){
+const sameValue=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+function validateEntries(entries){
+  if(!entries||typeof entries!=="object"||Array.isArray(entries))throw new Error("云端数据结构无效，已停止写入");
+  for(const key of Object.keys(entries)){
+    let path;try{path=JSON.parse(key);}catch(e){throw new Error("云端记录键无效，已停止写入");}
+    if(!Array.isArray(path)||path.length<2||!["days","config","vitals"].includes(path[0])||
+       path.some(p=>typeof p!=="string"||!p||["__proto__","prototype","constructor"].includes(p)))
+      throw new Error("云端记录路径无效，已停止写入");
+  }
+  return entries;
+}
+async function ghRequest(url,options={}){
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
+  try{return await fetch(url,{...options,signal:controller.signal});}
+  catch(e){throw new Error(e.name==="AbortError"?"同步请求超时":"网络连接失败");}
+  finally{clearTimeout(timer);}
+}
+async function ghRead(force=false){
   const head=ghHead();
   if(ghEtag&&!force)head["If-None-Match"]=ghEtag;
-  const r=await fetch(ghURL()+"?ref=main",{headers:head,cache:"no-store"});
+  const r=await ghRequest(ghURL()+"?ref=main",{headers:head,cache:"no-store"});
   if(r.status===304&&ghCache)return {entries:ghCache};
-  if(r.status===404){ghCache={};ghSha=null;return {entries:{}};}
+  // 私有仓库无权限也可能返回 404，绝不能自动当成空文件创建。
+  if(r.status===404)throw new Error("找不到数据文件或没有访问权限，请核对令牌及 main/data.json");
   if(r.status===401)throw new Error("同步令牌无效或已过期");
-  if(r.status===403)throw new Error("同步令牌没有权限");
+  if(r.status===403)throw new Error("访问被拒绝或请求受限，请检查令牌权限后重试");
   if(!r.ok)throw new Error("读取失败 "+r.status);
   const j=await r.json();
-  ghEtag=r.headers.get("etag");ghSha=j.sha;
-  let doc={};try{doc=JSON.parse(b64ToStr(j.content));}catch(e){}
-  ghCache=doc.entries||{};
-  return {entries:ghCache};
+  let doc;try{
+    if(typeof j.content!=="string"||!j.content||j.encoding!=="base64"||typeof j.sha!=="string"||!j.sha)throw new Error();
+    doc=JSON.parse(b64ToStr(j.content));
+  }catch(e){throw new Error("云端文件无法解析，已保留本机数据并停止写入");}
+  const entries=validateEntries(doc?.entries);
+  ghEtag=r.headers.get("etag");ghSha=j.sha;ghCache=entries;
+  return {entries};
 }
-// 冲突不覆盖：拉最新 → 应用自己的改动 → 重提交
+function opMatches(map,op){return op.delete?!Object.hasOwn(map,op.key):Object.hasOwn(map,op.key)&&sameValue(map[op.key],op.value);}
 async function ghWrite(ops){
   for(let i=0;i<4;i++){
     await ghRead(true);
-    const next=Object.assign({},ghCache);
-    for(const op of ops||[]){ if(op.delete)delete next[op.key]; else next[op.key]=op.value; }
+    const conflicts=[];
+    for(const op of ops){
+      if(opMatches(ghCache,op))continue; // 上次提交已成功、仅回包丢失时安全重放。
+      const present=Object.hasOwn(ghCache,op.key);
+      const unchanged=Object.hasOwn(op,"basePresent")&&present===op.basePresent&&(!present||sameValue(ghCache[op.key],op.base));
+      // 旧队列没有基线：不能猜测是否覆盖了家人的修改。
+      if(!unchanged)conflicts.push({key:op.key,serial:op.serial,remotePresent:present,...(present?{remote:clone(ghCache[op.key])}:{})});
+    }
+    if(conflicts.length){syncConflicts=conflicts;throw new Error("发现同一字段的不同修改，请点「处理冲突」选择；修改仍在待同步队列");}
+    if(ops.every(op=>opMatches(ghCache,op)))return {entries:ghCache};
+    const next=clone(ghCache);
+    for(const op of ops){if(op.delete)delete next[op.key];else next[op.key]=clone(op.value);}
     const payload={message:"记录更新 "+new Date().toISOString().slice(0,16).replace("T"," "),
-      content:strToB64(JSON.stringify({entries:next})),branch:"main"};
-    if(ghSha)payload.sha=ghSha;
-    const r=await fetch(ghURL(),{method:"PUT",headers:ghHead(),body:JSON.stringify(payload)});
-    if(r.ok){const j=await r.json();ghSha=j.content.sha;ghEtag=null;ghCache=next;return {entries:next};}
-    if(r.status===409||r.status===422)continue;
-    const j=await r.json().catch(()=>({}));
-    throw new Error(j.message||("写入失败 "+r.status));
+      content:strToB64(JSON.stringify({entries:next})),branch:"main",sha:ghSha};
+    const r=await ghRequest(ghURL(),{method:"PUT",headers:{...ghHead(),"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    if(r.ok){
+      const j=await r.json();if(!j.content?.sha)throw new Error("提交回执不完整，保留队列等待核对");
+      ghSha=j.content.sha;ghEtag=null;ghCache=next;return {entries:next};
+    }
+    if(r.status===409)continue;
+    throw new Error("写入失败 "+r.status+"，修改已保留");
   }
-  throw new Error("冲突太频繁，稍后重试");
+  throw new Error("冲突太频繁，修改已保留，请稍后重试");
 }
-
-// 三条路：配了 GitHub 走云端；没配或连不上退回本地，应用照常能用
-async function cloudFetch(options={}){
-  const localCall=()=>options.method==="PATCH"
-    ? localApply(JSON.parse(options.body||"{}")) : {entries:localEntries()};
-  if(!ghOn()){markLocal();return localCall();}
-  try{
-    const out=options.method==="PATCH"
-      ? await ghWrite(JSON.parse(options.body||"{}").ops)
-      : await ghRead();
-    if(localMode){localMode=false;localModeMsg="";}
-    return out;
-  }catch(e){
-    if(/令牌/.test(e.message)){markLocal(e.message+" · 已转本地模式");}
-    else markLocal("连不上云端 · 暂存本机，恢复后自动重试");
-    return localCall();
-  }
+function queueStatus(error){
+  const count=Object.keys(pending).length;
+  const message=error?(error.message||String(error))+" · "+(count?"修改待上传，当前显示缓存与本机修改":"当前显示上次缓存"):
+    !ghOn()?"未设置同步令牌 · "+(count?"修改待上传":"当前显示本机缓存"):
+    count?"有修改待同步…":"已同步 · 家人可共同记录";
+  syncMessage(message,!!error||!ghOn()||!!syncConflicts.length);
+  const retry=document.getElementById("btnSyncRetry");if(retry)retry.textContent=syncConflicts.length?"处理冲突":"重试";
 }
 async function flushCloud(){
-  if(cloudBusy||!cloudReady)return;
+  if(cloudBusy||pullBusy||syncSettingsBusy||!cloudReady)return;
+  if(!ghOn()||syncConflicts.length){queueStatus(syncConflicts.length?new Error("同一字段存在冲突，请选择保留内容"):null);return;}
   cloudBusy=true;
-  if(inFlight||Object.keys(pending).length)syncMessage("同步中…");
   try{
     while(inFlight||Object.keys(pending).length){
       if(!inFlight){
         const entries=Object.entries(pending).slice(0,150);
-        inFlight={id:crypto.randomUUID(),ops:entries.map(([key,p])=>({key,...p}))};persistQueue();
+        inFlight={id:crypto.randomUUID(),ops:entries.map(([key,p])=>({key,...clone(p)}))};persistQueue();
       }
       const batch=inFlight;
-      const result=await cloudFetch({method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify(batch)});
-      for(const op of batch.ops){if(pending[op.key]?.serial===op.serial)delete pending[op.key];}
-      inFlight=null;remoteMap=result.entries;persistQueue();applyCloud();
+      const result=await ghWrite(batch.ops);
+      for(const op of batch.ops){
+        const latest=pending[op.key];if(!latest)continue;
+        if(latest.serial===op.serial)delete pending[op.key];
+        else{latest.basePresent=!op.delete;if(op.delete)delete latest.base;else latest.base=clone(op.value);}
+      }
+      inFlight=null;remoteMap=clone(result.entries);persistQueue();applyCloud();
     }
-    syncMessage("已同步 · 家人可共同记录");
-  }catch(e){if(!localMode)syncMessage((e.message||"同步失败")+" 修改暂存在本机，联网后会重试。",true);}
+    queueStatus();
+  }catch(e){persistQueue();queueStatus(e);}
   finally{cloudBusy=false;}
 }
 async function syncPull(force=false){
-  if(pullBusy||cloudBusy||(!force&&editing()))return;
-  if(cloudReady&&(inFlight||Object.keys(pending).length)){await flushCloud();if(inFlight||Object.keys(pending).length)return;}
+  if(pullBusy||cloudBusy||syncSettingsBusy||(!force&&editing()))return;
+  if(inFlight||Object.keys(pending).length){await flushCloud();if(inFlight||Object.keys(pending).length)return;}
+  if(!ghOn()){queueStatus();return;}
   pullBusy=true;
   if(force)syncMessage("同步中…");
   try{
-    const result=await cloudFetch();remoteMap=result.entries;cloudReady=true;synced=true;
-    applyCloud();setAppEnabled(true);ensureDaySnapshot();LS.set("care.shared.cache.v2",remoteMap);
-    syncMessage(Object.keys(pending).length?"有修改待同步…":"已同步 · 家人可共同记录");
-  }catch(e){syncMessage(e.message||"连接失败，请重试。",true);}
+    const result=await ghRead(force);remoteMap=clone(result.entries);
+    persistQueue();applyCloud();ensureDaySnapshot();queueStatus();
+  }catch(e){queueStatus(e);}
   finally{pullBusy=false;}
-  if(cloudReady&&(inFlight||Object.keys(pending).length))flushCloud();
+  if(inFlight||Object.keys(pending).length)flushCloud();
 }
-async function initStore(){await syncPull(true);}
+async function resolveSyncConflicts(){
+  if(cloudBusy||pullBusy||syncSettingsBusy)return;
+  syncSettingsBusy=true;setAppEnabled(false);
+  try{
+    // 先撤回尚未确认的批次，保留所有操作到 pending；重建批次时才应用用户选择。
+    inFlight=null;persistQueue();
+    while(syncConflicts.length){
+      const conflict=syncConflicts[0],op=pending[conflict.key];
+      if(!op){syncConflicts.shift();continue;}
+      const path=JSON.parse(conflict.key).join(" / ");
+      const remote=conflict.remotePresent?JSON.stringify(conflict.remote):"（已删除 / 尚无记录）";
+      const local=op.delete?"（删除）":JSON.stringify(op.value);
+      const choice=await dlgOpen({type:"choice",title:"选择要保留的修改",
+        body:esc(path)+"<br>云端："+esc(remote)+"<br>本机："+esc(local),
+        choices:["保留云端","保留本机"],cancel:"暂不处理"});
+      if(choice===null)return;
+      if(choice==="保留云端"){delete pending[conflict.key];}
+      else{op.basePresent=conflict.remotePresent;if(conflict.remotePresent)op.base=clone(conflict.remote);else delete op.base;}
+      if(conflict.remotePresent)remoteMap[conflict.key]=clone(conflict.remote);else delete remoteMap[conflict.key];
+      syncConflicts.shift();persistQueue();applyCloud();
+    }
+  }finally{syncSettingsBusy=false;setAppEnabled(true);queueStatus(syncConflicts.length?new Error("仍有冲突待处理"):null);}
+  await flushCloud();await syncPull(true);
+}
+async function initStore(){
+  if(storageReadFailed)throw new Error(storageWarning);
+  validateEntries(remoteMap);
+  cloudReady=true;applyCloud();setAppEnabled(true);persistQueue();
+  // 离线启动只恢复已有缓存与队列，不自动生成并上传一整天空快照。
+  await syncPull(true);
+}
 async function loadDay(dateKey){state.items=clone(sharedDoc.days[dateKey]?.items||{});}
 async function loadConfig(){state.config=configFromWire(sharedDoc.config||{});}
 function saveDay(){
@@ -1181,7 +1217,7 @@ function ivPanel(it, cur){
     return '<div class="ivbar">'+
       '<button class="btn btn-primary" data-ivstart="'+it.id+'">开始输液</button>'+
       '<span class="ivmeta">'+(total>1 ? '共 '+total+' 瓶 · ' : '')+
-        '每瓶 <button class="linkbtn" data-ivdur="'+it.id+'">'+ivDur(it)+' 分钟</button>后提醒</span>'+
+        '每瓶 <button class="linkbtn" data-ivdur="'+it.id+'">'+ivDur(it)+' 分钟</button>后查看瓶子</span>'+
     '</div>';
   }
   const dur = r.dur || ivDur(it), end = ivEnd(r, it), left = end - cur, bn = r.bn || 1;
@@ -1364,7 +1400,7 @@ function renderNow(cur){
       label = "输液中";
       const total = ivBottles(target), bn = run.bn||1;
       meta = '<b>'+run.st+'</b> 开始' + (total>1 ? ' · 第 <b>'+bn+'/'+total+'</b> 瓶' : '') +
-             ' · 还有 <b>'+left+'</b> 分钟提醒';
+             ' · 还有 <b>'+left+'</b> 分钟该查看瓶子';
     }else{
       label = "下一项";
       meta = '<b>'+timeOf(target)+'</b> · 还有 <b>'+left+'</b> 分钟';
@@ -1396,7 +1432,7 @@ function setSkip(id, v){
   const r = rec(id);
   if(v){ r.skip = true; r.done = false; delete r.at; }
   else { delete r.skip; } saveDay(); render();
-  setStatus(v ? "已标记为今天跳过，不再提醒。" : "已恢复，重新计入今天的清单。");
+  setStatus(v ? "已标记为今天跳过，不再计入待办。" : "已恢复，重新计入今天的清单。");
 }
 function activeItems(){ return allItems().filter(i=>!isOff(i)); }
 function setPause(id, v){
@@ -1417,7 +1453,7 @@ function dlgOpen(opts){
         '<div class="dlg-h">'+esc(opts.title||"")+'</div>'+
         '<div class="dlg-b">'+(opts.body||"")+
           (opts.presets?'<div class="dlg-presets">'+opts.presets.map((label,i)=>'<button type="button" data-preset="'+i+'">'+esc(label)+'</button>').join('')+'</div>':'')+
-          (isInput ? '<input id="dlgIn" type="'+(opts.type==='time'?'time':'text')+'" aria-label="'+esc(opts.title||'填写内容')+'" '+(opts.numeric?'inputmode="numeric"':'')+' value="'+esc(opts.value||"")+'">' : '')+
+          (isInput ? '<input id="dlgIn" type="'+(opts.type==='time'?'time':opts.secret?'password':'text')+'" '+(opts.secret?'autocomplete="off" autocapitalize="none" spellcheck="false" ':'')+'aria-label="'+esc(opts.title||'填写内容')+'" '+(opts.numeric?'inputmode="numeric"':'')+' value="'+esc(opts.value||"")+'">' : '')+
           (isInput&&opts.tools?'<div class="dlg-tools"><button type="button" data-clear="1">清空</button><button type="button" data-paste="1">粘贴</button></div><div class="dlg-tip" data-tip></div>':'')+
           (isChoice?'<div class="dlg-choices">'+opts.choices.map((label,i)=>'<button type="button" data-choice="'+i+'">'+esc(label)+'</button>').join('')+'</div>':'')+
         '</div>'+
@@ -1525,7 +1561,7 @@ document.addEventListener("click", (e)=>{
   if(du){
     const it = allItems().find(i=>i.id===du.dataset.ivdur), r = rec(it.id);
     const cur0 = r.dur || ivDur(it);
-    askText("这瓶大概输多少分钟？", "到点会提醒一次，方便去看瓶子。", cur0, true).then(v=>{
+    askText("这瓶大概输多少分钟？", "到点会在页面内标记该查看瓶子，不会发出声音或系统通知。", cur0, true).then(v=>{
       if(v===null) return;
       const n = parseInt(v, 10);
       if(!(n > 0 && n <= 600)){ setStatus("请填 1–600 之间的分钟数。"); return; }
@@ -1621,7 +1657,6 @@ function switchView(v){
   $("#viewTrend").hidden = v!=="trend";
   $("#viewHistory").hidden = v!=="history";
   $("#nowBar").hidden = v!=="today";
-  $("#todayReminderActions").hidden = v!=="today";
   if(v==="trend") renderTrend({focusToday:true});
   if(v==="history") renderHistory();
   window.scrollTo({top:0,behavior:'instant'});
@@ -1701,7 +1736,6 @@ document.addEventListener("click", function(e){
 });
 
 /* ============ 导出 / 导入 / 趋势 ============ */
-const VKEY = "vitals_merged_v1";
 
 /* 从一天的 items 提取指标 */
 function vitalsOf(items){
@@ -1723,7 +1757,7 @@ function mergeVitals(base, add){
   }
   return out;
 }
-/* 本机历史 + 已并入的汇总，合成一张按日期的表 */
+/* 云端缓存与待同步修改 + 已并入的汇总，合成按日期的表 */
 async function vitalsTable(){
   const hist = await collectHistory();
   let m = loadVitals();
@@ -2189,8 +2223,7 @@ trendRoot.addEventListener('focusout',e=>{const p=e.target.closest('.trend-point
 let trendResizeTimer;
 window.addEventListener('resize',()=>{clearTimeout(trendResizeTimer);trendResizeTimer=setTimeout(()=>{if(!document.getElementById('viewTrend').hidden)renderTrend();},180);});
 
-/* 提醒子系统已移除：网页在后台会被系统挂起，不可能准时响；
-   补发机制又会在打开时堆一屏通知。改由系统日历承担（后续再加）。 */
+/* 仅保留页面内的到点 / 逾期视觉状态，不发送系统通知或声音。 */
 
 /* ============ 往日记录（只读，不切换今天的编辑日期） ============ */
 let historyDate = null;
@@ -2312,7 +2345,7 @@ async function boot(){
   });
   window.addEventListener("pagehide",()=>{ clearTimeout(queueTimer); flushCloud(); });
   window.addEventListener("online",()=>{flushCloud();syncPull();});
-  document.getElementById("btnSyncRetry").onclick=async()=>{const btn=document.getElementById("btnSyncRetry");btn.disabled=true;try{await flushCloud();await syncPull(true);}finally{btn.disabled=false;}};
+  document.getElementById("btnSyncRetry").onclick=async()=>{const btn=document.getElementById("btnSyncRetry");btn.disabled=true;try{if(syncConflicts.length)await resolveSyncConflicts();else{await flushCloud();await syncPull(true);}}finally{btn.disabled=false;}};
 }
 
 boot().catch(function(err){
@@ -2323,23 +2356,19 @@ boot().catch(function(err){
 
 /* ============ 同步设置 ============ */
 document.getElementById("btnSyncCfg").addEventListener("click", async ()=>{
-  const token=await askText("同步令牌",
-    ghCfg.token?"已经填过了。要换的话粘贴新的，清空则转为本地模式。":"复制好令牌后点下面的「粘贴」，两台手机填一样的。",
-    ghCfg.token||"", false, true);
-  if(token===null)return;
-  ghCfg={token:(token||"").trim()};
-  LS.set(GH_CFG_KEY,ghCfg);
-  ghEtag=null;ghSha=null;ghCache=null;localMode=false;localModeMsg="";
-  if(!ghOn()){markLocal("已切回本地模式 · 记录只存在这台手机上");return;}
-  syncMessage("正在连接云端…");
+  if(cloudBusy||pullBusy||syncSettingsBusy){setStatus("正在同步，请稍后再修改令牌。");return;}
+  syncSettingsBusy=true;
   try{
-    await syncPull(true);
-    await flushCloud();
-    if(!localMode)syncMessage("已连上云端 · 家人可共同记录");
-  }catch(e){ syncMessage("连接失败："+(e.message||e),true); }
+    const token=await dlgOpen({type:"input",title:"同步令牌",secret:true,tools:true,value:ghCfg.token||"",
+      body:"令牌只保存在这台设备的浏览器。清空后暂停云端同步，缓存和待上传修改会保留。"});
+    if(token===null)return;
+    const next={token:token.trim()};
+    if(!LS.set(GH_CFG_KEY,next)){queueStatus(new Error("令牌未能保存，设置未变更"));return;}
+    ghCfg=next;ghEtag=null;ghSha=null;ghCache=null;
+  }finally{syncSettingsBusy=false;}
+  await syncPull(true);
 });
 </script>
 
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a39d179e5f8c3bef',t:'MTc4OTE5NzAyNQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><iframe height="1" width="1" style="position: absolute; top: 0px; left: 0px; border: medium; visibility: hidden;"></iframe>
 
 </body></html>
