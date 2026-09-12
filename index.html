@@ -2,6 +2,7 @@
 <html lang="zh-CN"><head>
 
 <meta name="description" content="每日事项、测量记录与日报打印">
+<meta name="care-app" content="dc-9f2a">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" id="vp">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -648,6 +649,17 @@ body.export-open > :not(#exportView){display:none!important}
 
 <script>
 "use strict";
+// 在任何页面渲染之前保存本次加载的源码特征，避免把记录变化误认为程序更新。
+const loadedAppMarkup=appMarkupSignature(document.documentElement);
+function appMarkupSignature(node){
+  const serialize=n=>{
+    if(n.nodeType===3)return n.nodeValue.trim()?n.nodeValue:null;
+    if(n.nodeType!==1)return null;
+    const attrs=Array.from(n.attributes,a=>[a.name,a.value]).sort((a,b)=>a[0].localeCompare(b[0]));
+    return [n.localName,attrs,Array.from(n.childNodes,serialize).filter(v=>v!==null)];
+  };
+  return JSON.stringify(serialize(node));
+}
 
 
 /* ============ iOS：输入时不让页面自动放大 ============ */
@@ -2596,6 +2608,63 @@ function rolloverDay(){
   return true;
 }
 
+/* 自动更新仅检查公开前端；不携带同步令牌，也不操作记录缓存。 */
+let appUpdateBusy=false, appUpdateCandidate=null, appUpdateLastCheck=0;
+let appUpdatePointerDown=false, appUpdateInteractionAt=0, appUpdateReloading=false;
+const APP_UPDATE_INTERVAL_MS=300000;
+async function appMarkupHash(markup){
+  const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(markup));
+  return Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,'0')).join('');
+}
+function appUpdateSafe(){
+  return !document.hidden&&!appUpdateReloading&&!appUpdatePointerDown&&Date.now()-appUpdateInteractionAt>=1500&&
+    !editing()&&!trendGesture&&!trendTableGesture&&!Array.from(document.querySelectorAll('.swipe-fg')).some(el=>el._raf)&&
+    !cloudBusy&&!pullBusy&&!syncSettingsBusy&&!storageWarning&&
+    !inFlight&&!Object.keys(pending).length&&!syncConflicts.length;
+}
+function applyAppUpdate(){
+  if(!appUpdateCandidate||Date.now()-appUpdateCandidate.checkedAt>10000||!appUpdateSafe()||navigator.onLine===false)return false;
+  // 必须先确认当前记录已持久保存；失败时保留页面，不执行刷新。
+  if(sessionOpen&&!persistQueue())return false;
+  if(!appUpdateSafe())return false;
+  try{
+    const previous=JSON.parse(sessionStorage.getItem('care.app.update.attempt.v1')||'null');
+    if(previous?.hash===appUpdateCandidate.hash&&Date.now()-previous.at<900000)return false;
+    sessionStorage.setItem('care.app.update.attempt.v1',JSON.stringify({hash:appUpdateCandidate.hash,at:Date.now()}));
+  }catch(e){return false;} // 无法记录防循环标记时不冒险反复刷新。
+  appUpdateReloading=true;
+  location.replace(appUpdateCandidate.url);
+  return true;
+}
+async function checkAppUpdate(force=false){
+  if(document.hidden||appUpdateBusy||appUpdateReloading||navigator.onLine===false)return;
+  if(appUpdateCandidate){if(applyAppUpdate())return;}
+  const readyToRecheck=appUpdateCandidate&&appUpdateSafe();
+  if(!readyToRecheck&&Date.now()-appUpdateLastCheck<(force?30000:APP_UPDATE_INTERVAL_MS))return;
+  appUpdateBusy=true;appUpdateLastCheck=Date.now();
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
+  try{
+    const url=new URL(location.href);url.hash='';url.searchParams.set('_careUpdate',String(Date.now()));
+    const response=await fetch(url.href,{cache:'no-store',credentials:'omit',referrerPolicy:'no-referrer',signal:controller.signal});
+    if(!response.ok||!response.headers.get('content-type')?.includes('text/html'))return;
+    const finalURL=new URL(response.url||url.href);
+    if(finalURL.origin!==url.origin||finalURL.pathname!==url.pathname)return;
+    const source=await response.text();
+    const next=new DOMParser().parseFromString(source,'text/html');
+    if(next.querySelector('meta[name="care-app"]')?.getAttribute('content')!=='dc-9f2a'||
+       !next.getElementById('loginView')||!next.getElementById('appView'))return;
+    const [currentHash,nextHash]=await Promise.all([appMarkupHash(loadedAppMarkup),appMarkupHash(appMarkupSignature(next.documentElement))]);
+    if(currentHash===nextHash){appUpdateCandidate=null;return;}
+    appUpdateCandidate={hash:nextHash,url:url.href,checkedAt:Date.now()};
+    applyAppUpdate();
+  }catch(e){/* 断网或检查失败继续使用当前页面，等待下次联网。 */}
+  finally{clearTimeout(timer);appUpdateBusy=false;}
+}
+document.addEventListener('pointerdown',()=>{appUpdatePointerDown=true;appUpdateInteractionAt=Date.now();},true);
+['pointerup','pointercancel'].forEach(type=>document.addEventListener(type,()=>{appUpdatePointerDown=false;appUpdateInteractionAt=Date.now();},true));
+document.addEventListener('input',()=>{appUpdateInteractionAt=Date.now();},true);
+window.addEventListener('blur',()=>{appUpdatePointerDown=false;});
+
 async function boot(){
   const w=document.querySelector("#jsWarn");if(w)w.style.display="none";
   setAppEnabled(false);
@@ -2606,12 +2675,16 @@ async function boot(){
     if(cloudReady)tickRefresh();
   }
   setInterval(refreshTick,PULL_INTERVAL_MS);
+  setInterval(()=>checkAppUpdate(),60000);
+  checkAppUpdate(true);
   document.addEventListener("visibilitychange",()=>{
     if(document.hidden){ clearTimeout(queueTimer); flushCloud(); }   // 切走前先把攒着的推上去
-    else refreshTick();
+    else{appUpdatePointerDown=false;refreshTick();checkAppUpdate(true);}
   });
   window.addEventListener("pagehide",()=>{ clearTimeout(queueTimer); flushCloud(); });
   window.addEventListener("online",()=>{flushCloud();syncPull();});
+  window.addEventListener("online",()=>checkAppUpdate(true));
+  window.addEventListener("pageshow",()=>checkAppUpdate(true));
   window.addEventListener("offline",()=>{if(sessionOpen){offline=true;queueStatus();}});
   document.getElementById("btnSyncRetry").onclick=async()=>{const btn=document.getElementById("btnSyncRetry");btn.disabled=true;try{if(syncConflicts.length)await resolveSyncConflicts();else{await flushCloud();await syncPull(true);}}finally{btn.disabled=false;}};
 }
