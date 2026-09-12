@@ -31,8 +31,8 @@ h1{font-size:25px;margin:5px 0 3px}
 .next{margin-top:12px;background:var(--soft);border-radius:14px;padding:12px 13px;cursor:pointer}
 .next small{display:block;color:var(--muted);margin-bottom:3px}
 .next strong{display:block}
-.tabs{display:flex;gap:8px;margin-top:12px;overflow:auto}
-.tabs button,.pill,.mini,.primary,.ghost{border:0;border-radius:10px;padding:9px 12px;background:#f0f2f4;color:var(--text);cursor:pointer}
+.tabs{display:flex;gap:8px;margin-top:12px;overflow:auto;-webkit-overflow-scrolling:touch}
+.tabs button,.pill,.mini,.primary,.ghost{border:0;border-radius:10px;padding:9px 12px;background:#f0f2f4;color:var(--text);cursor:pointer;white-space:nowrap}
 .tabs button.active,.primary{background:var(--accent);color:#fff}
 .sync{font-size:12px;color:var(--ok);margin-top:9px}
 .section{margin-top:20px}
@@ -43,6 +43,7 @@ h1{font-size:25px;margin:5px 0 3px}
 .item.done{opacity:.66}
 .item.skipped{opacity:.52}
 .item.overdue{border-color:#f0c3c3;background:#fffafa}
+.item.off{opacity:.6;background:#fbfbfc}
 .row{display:flex;gap:11px;align-items:flex-start}
 .time{width:52px;flex:0 0 52px;font-variant-numeric:tabular-nums;font-weight:700;color:#34404d}
 .main{flex:1;min-width:0}
@@ -53,6 +54,7 @@ h1{font-size:25px;margin:5px 0 3px}
 .badge.stop{background:#fff1f0;color:#b33}
 .badge.late{background:#fdecec;color:var(--danger)}
 .badge.check{background:#fff5e7;color:var(--warn)}
+.badge.range{background:#eef5ff;color:#3a6ea8}
 .fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:11px 0 3px}
 .field{background:#fafbfc;border:1px solid var(--line);border-radius:10px;padding:8px}
 .field label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
@@ -64,7 +66,11 @@ h1{font-size:25px;margin:5px 0 3px}
 .delete{background:#fff0f0;color:var(--danger)}
 .details{margin-top:9px;font-size:12px}
 .details summary{cursor:pointer;color:#4b5663}
-.details p{color:var(--muted);line-height:1.55}
+.edit{margin-top:10px;background:#fafbfc;border:1px solid var(--line);border-radius:12px;padding:12px}
+.edit label{display:block;font-size:11px;color:var(--muted);margin:8px 0 4px}
+.edit input,.edit textarea,.edit select{width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;background:#fff;font-size:16px}
+.edit .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hint{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5}
 .controls{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}
 .footer{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:20px;font-size:13px;line-height:1.65;color:var(--muted)}
 .view{display:none}.view.active{display:block}
@@ -74,7 +80,12 @@ svg{width:100%;height:240px}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:flex-end;justify-content:center;z-index:50}
 .modal.show{display:flex}
 .sheet{background:#fff;width:min(760px,100%);border-radius:20px 20px 0 0;padding:18px;max-height:85vh;overflow:auto}
-.sheet input,.sheet select,.sheet textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;margin:6px 0 12px}
+.sheet h3{margin:0 0 10px}
+.sheet label{display:block;font-size:12px;color:var(--muted);margin-top:10px}
+.sheet input,.sheet select,.sheet textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;margin:6px 0 4px;font-size:16px}
+.sheet .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.check{display:flex;align-items:center;gap:8px;margin:14px 0}
+.check input{width:auto;margin:0}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:22px;background:#18202a;color:#fff;padding:12px 16px;border-radius:12px;font-size:14px;z-index:60;max-width:90vw;display:none;box-shadow:0 6px 24px rgba(0,0,0,.25)}
 .toast.show{display:block}
 @media(max-width:520px){.wrap{padding:10px 8px 84px}.top{border-radius:14px}.fields{grid-template-columns:1fr 1fr}.time{width:46px;flex-basis:46px}.item{padding:12px}}
@@ -91,6 +102,7 @@ svg{width:100%;height:240px}
     <div class="next" id="nextBox"><small>下一项</small><strong id="nextTitle">—</strong><div class="desc" id="nextTime">—</div></div>
     <div class="tabs">
       <button class="active" data-view="today">今天</button>
+      <button data-view="plan">方案</button>
       <button data-view="chart">图表</button>
       <button data-view="history">往日</button>
       <button id="topBtn">回到顶部</button>
@@ -110,9 +122,20 @@ svg{width:100%;height:240px}
       <div id="sections"></div>
       <div class="footer">
         <strong>用药说明</strong><br>
-        这张清单是按家属口述整理的日常安排，不是医嘱本身，也不能替代医生判断。每天以护士交代和当天医嘱为准，有出入就改这里。<br>
+        这张清单是按家属口述整理的日常安排，不是医嘱本身，也不能替代医生判断。每天以护士交代和当天医嘱为准，有出入就去「方案」里改。<br>
         体温 ≥ 38.5 ℃、血糖低于 3.9 mmol/L 或出现心慌出冷汗、输液中出现皮疹胸闷 —— 立刻按铃找护士。
       </div>
+    </section>
+
+    <section id="plan" class="view">
+      <div class="controls">
+        <button class="primary" id="addBtn2">＋ 添加事项</button>
+        <button class="ghost" id="restoreBtn">恢复出厂清单</button>
+      </div>
+      <div class="footer" style="margin-top:0">
+        这里是<strong>长期方案</strong>，每天早上的清单按它生成。停用的条目明天起不再出现，填了结束日期的会到期自动消失。改这里不影响已经过去的记录。
+      </div>
+      <div id="planList"></div>
     </section>
 
     <section id="chart" class="view">
@@ -130,15 +153,37 @@ svg{width:100%;height:240px}
   </main>
 </div>
 
-<div class="modal" id="modal">
+<div class="modal" id="addModal">
   <div class="sheet">
     <h3>添加事项</h3>
     <label for="newTime">时间</label><input id="newTime" type="time" value="12:00">
+    <label for="newSection">分区</label>
+    <select id="newSection"><option>清晨</option><option>上午</option><option>中午</option><option>下午</option><option>傍晚</option><option>睡前</option></select>
     <label for="newType">类别</label>
     <select id="newType"><option>服药</option><option>测量</option><option>护理</option><option>输液</option><option>进食</option><option>其他</option></select>
     <label for="newTitle">名称</label><input id="newTitle" placeholder="例如：测血氧">
     <label for="newDesc">说明</label><textarea id="newDesc" rows="3"></textarea>
+    <label for="newKind">要记录的数字</label>
+    <select id="newKind">
+      <option value="none">不记录</option><option value="temp">体温</option>
+      <option value="glucose">血糖</option><option value="spo2">血氧</option>
+      <option value="bp">血压心率血氧</option>
+    </select>
+    <div class="two">
+      <div><label for="newFrom">从哪天开始</label><input id="newFrom" type="date"></div>
+      <div><label for="newTo">吃到哪天为止</label><input id="newTo" type="date"></div>
+    </div>
+    <div class="hint">两个日期都可以留空，留空就是一直有效。</div>
+    <label class="check"><input type="checkbox" id="newOnce"> 只加今天，不进长期方案</label>
     <div class="actions"><button class="primary" id="saveNew">保存</button><button class="ghost" id="cancelNew">取消</button></div>
+  </div>
+</div>
+
+<div class="modal" id="choiceModal">
+  <div class="sheet">
+    <h3 data-title>确认</h3>
+    <div class="desc" data-msg></div>
+    <div class="actions" data-opts></div>
   </div>
 </div>
 
@@ -146,14 +191,18 @@ svg{width:100%;height:240px}
 
 <script>
 const KEY='hospitalDailyChecklist_v1';
+const PLAN_KEY='hospitalChecklistPlan_v1';
 const pad=n=>String(n).padStart(2,'0');
 // 本地日期，不用 toISOString（那个取的是 UTC，UTC+8 的早上 8 点前会算成昨天）
 const dateKey=(d=new Date())=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const nowHHMM=(d=new Date())=>`${pad(d.getHours())}:${pad(d.getMinutes())}`;
 const weekday=['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
-const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const SECTIONS=['清晨','上午','中午','下午','傍晚','睡前','自加'];
+const secRank=s=>{const i=SECTIONS.indexOf(s);return i<0?99:i};
 
-// [分区, 时间, 类别, 名称, 说明, 录入字段, 参考值, 停用中, 待确认]
+/* ============ 出厂模板：只在第一次运行时用来生成方案 ============ */
+// [分区, 时间, 类别, 名称, 说明, 录入字段, 参考值, 出厂停用, 待确认]
 const template=[
 ["清晨","06:45","测量","空腹血糖","必须在吃早饭、吃降糖药之前测","glucose","参考 4.4–7.0"],
 ["清晨","07:30","测量","量体温","起床后第一件事，静坐 5 分钟再测","temp","参考 36.0–37.2"],
@@ -197,109 +246,173 @@ const template=[
 ["傍晚","20:15","护理","漱口 · 复方硼砂含漱液","本轮服药后至少10分钟再含漱 · 不可吞服"],
 
 ["睡前","20:30","测量","量体温","一天里最容易发热的时段，别漏","temp","参考 36.0–37.2"],
-["睡前","21:17","服药","睡前 · 阿托伐他汀钙片","抗病毒这 5 天不吃 —— 疗程结束当天接回","none","",true],
+["睡前","21:17","服药","睡前 · 阿托伐他汀钙片","抗病毒期间停用 —— 疗程结束那天在方案里填上「从哪天开始」，到点会自己回来","none","",true],
 ["睡前","21:38","服药","抗新冠 · 先诺欣（第 2 次）","每 12 小时一次，与早上 09:38 那次配对 · 先诺特韦2片＋利托那韦1片 · 和吃饭的间隔按药师交代为准","none","",false,true],
 ["睡前","22:00","测量","血压","血压 < 140/90 · 血氧 ≥ 95%","bp"],
 ["睡前","23:00","服药","抗血小板 · 硫酸氢氯吡格雷片","每天固定时间，一片，防脑梗复发"]
 ];
 
-function makeItems(){
-  return template.map((x,i)=>({
-    id:'base-'+i,section:x[0],time:x[1],type:x[2],title:x[3],desc:x[4]||'',kind:x[5]||'none',
-    ref:x[6]||'',paused:!!x[7],confirm:!!x[8],done:false,skipped:false,values:{}
-  }));
+function factoryPlan(){
+  return {items:template.map((x,i)=>({
+    id:'base-'+i,section:x[0],time:x[1],type:x[2],title:x[3],desc:x[4]||'',
+    kind:x[5]||'none',ref:x[6]||'',confirm:!!x[8],
+    active:!x[7],from:'',to:''
+  })),updatedAt:new Date().toISOString()};
 }
+
+/* ============ 存取 ============ */
+function loadPlan(){
+  try{
+    const p=JSON.parse(localStorage.getItem(PLAN_KEY));
+    if(p&&Array.isArray(p.items)&&p.items.length)return p;
+  }catch(e){}
+  const f=factoryPlan();localStorage.setItem(PLAN_KEY,JSON.stringify(f));return f;
+}
+function savePlan(){plan.updatedAt=new Date().toISOString();
+  try{localStorage.setItem(PLAN_KEY,JSON.stringify(plan))}catch(e){toast('方案保存失败，手机存储可能已满')}}
 function loadAll(){try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){return {}}}
-function saveAll(x){try{localStorage.setItem(KEY,JSON.stringify(x))}catch(e){toast('保存失败，手机存储可能已满')}}
+function saveAll(){try{localStorage.setItem(KEY,JSON.stringify(all))}catch(e){toast('保存失败，手机存储可能已满')}}
+
+let plan=loadPlan();
 let all=loadAll();
 let curKey=dateKey();
+
+const inRange=(it,k)=>(!it.from||it.from<=k)&&(!it.to||it.to>=k);
+const liveOn=(it,k)=>it.active&&inRange(it,k);
+
+function instantiate(k){
+  return plan.items.filter(it=>liveOn(it,k)).map(it=>({
+    id:it.id,section:it.section,time:it.time,type:it.type,title:it.title,
+    desc:it.desc,kind:it.kind,ref:it.ref,confirm:it.confirm,
+    done:false,skipped:false,values:{}
+  }));
+}
 function ensureDay(){
-  if(!all[curKey]) all[curKey]={items:makeItems(),createdAt:new Date().toISOString(),notified:[]};
-  if(!all[curKey].notified) all[curKey].notified=[];
+  if(!all[curKey])all[curKey]={items:instantiate(curKey),createdAt:new Date().toISOString(),notified:[]};
+  if(!all[curKey].notified)all[curKey].notified=[];
   return all[curKey];
 }
 let day=ensureDay();
+function save(){all[curKey]=day;saveAll();render()}
 
-function save(){all[curKey]=day;saveAll(all);render()}
+/* ============ 小工具 ============ */
 function toast(msg){
   const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
-  clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),3200);
+  clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),3400);
 }
+function choose(title,msg,opts){
+  return new Promise(res=>{
+    const m=document.getElementById('choiceModal');
+    m.querySelector('[data-title]').textContent=title;
+    m.querySelector('[data-msg]').textContent=msg;
+    const box=m.querySelector('[data-opts]');box.innerHTML='';
+    opts.forEach(o=>{
+      const b=document.createElement('button');
+      b.className='pill '+(o.primary?'primary':'ghost');
+      b.textContent=o.label;
+      b.onclick=()=>{m.classList.remove('show');res(o.value)};
+      box.appendChild(b);
+    });
+    m.classList.add('show');
+  });
+}
+const planItem=id=>plan.items.find(x=>x.id===id);
+
+/* ============ 今日清单渲染 ============ */
 function renderFields(item){
   const v=k=>esc(item.values[k]||'');
-  if(item.kind==='glucose') return `<div class="fields"><div class="field"><label>血糖 mmol/L</label><input inputmode="decimal" data-v="glucose" value="${v('glucose')}"></div></div>`;
-  if(item.kind==='temp') return `<div class="fields"><div class="field"><label>体温 ℃</label><input inputmode="decimal" data-v="temp" value="${v('temp')}"></div></div>`;
-  if(item.kind==='spo2') return `<div class="fields"><div class="field"><label>血氧 %</label><input inputmode="numeric" data-v="spo2" value="${v('spo2')}"></div></div>`;
-  if(item.kind==='bp') return `<div class="fields">
+  if(item.kind==='glucose')return `<div class="fields"><div class="field"><label>血糖 mmol/L</label><input inputmode="decimal" data-v="glucose" value="${v('glucose')}"></div></div>`;
+  if(item.kind==='temp')return `<div class="fields"><div class="field"><label>体温 ℃</label><input inputmode="decimal" data-v="temp" value="${v('temp')}"></div></div>`;
+  if(item.kind==='spo2')return `<div class="fields"><div class="field"><label>血氧 %</label><input inputmode="numeric" data-v="spo2" value="${v('spo2')}"></div></div>`;
+  if(item.kind==='bp')return `<div class="fields">
     <div class="field"><label>收缩压 mmHg</label><input inputmode="numeric" data-v="sys" value="${v('sys')}"></div>
     <div class="field"><label>舒张压 mmHg</label><input inputmode="numeric" data-v="dia" value="${v('dia')}"></div>
     <div class="field"><label>心率 次/分</label><input inputmode="numeric" data-v="hr" value="${v('hr')}"></div>
     <div class="field"><label>血氧 %</label><input inputmode="numeric" data-v="spo2" value="${v('spo2')}"></div>
   </div>`;
-  if(item.kind==='meal') return `<div class="fields"><div class="field"><label>第一口时间</label><input type="time" data-v="mealTime" value="${v('mealTime')||item.time}"></div></div>`;
+  if(item.kind==='meal')return `<div class="fields"><div class="field"><label>第一口时间</label><input type="time" data-v="mealTime" value="${v('mealTime')||item.time}"></div></div>`;
   return '';
 }
 function noteFor(item){
-  if(item.kind==='glucose' && item.values.glucose){
-    const v=+item.values.glucose;
-    if(v<3.9) return `<div class="desc" style="color:var(--danger)">⚠ 血糖低于 3.9 mmol/L，请立即联系护士。</div>`;
+  if(item.kind==='glucose'&&item.values.glucose){
+    if(+item.values.glucose<3.9)return `<div class="desc" style="color:var(--danger)">⚠ 血糖低于 3.9 mmol/L，请立即联系护士。</div>`;
   }
-  if(item.kind==='temp' && item.values.temp && +item.values.temp>=38.5)
+  if(item.kind==='temp'&&item.values.temp&&+item.values.temp>=38.5)
     return `<div class="desc" style="color:var(--danger)">⚠ 体温 ≥ 38.5 ℃，请立即联系护士。</div>`;
-  if((item.kind==='bp'||item.kind==='spo2') && item.values.spo2 && +item.values.spo2<95)
+  if((item.kind==='bp'||item.kind==='spo2')&&item.values.spo2&&+item.values.spo2<95)
     return `<div class="desc" style="color:var(--warn)">⚠ 血氧低于 95%，请按医嘱观察并联系医护人员。</div>`;
   return '';
 }
-const isOverdue=it=>!it.done&&!it.skipped&&!it.paused&&it.time<nowHHMM();
+const isOverdue=it=>!it.done&&!it.skipped&&it.time<nowHHMM();
+
+function editForm(p,where){
+  return `<div class="edit" data-edit-for="${esc(p.id)}">
+    <div class="two">
+      <div><label>时间</label><input type="time" data-e="time" value="${esc(p.time)}"></div>
+      <div><label>分区</label><select data-e="section">${SECTIONS.map(s=>`<option${s===p.section?' selected':''}>${esc(s)}</option>`).join('')}</select></div>
+    </div>
+    <label>名称</label><input data-e="title" value="${esc(p.title)}">
+    <label>说明</label><textarea data-e="desc" rows="2">${esc(p.desc)}</textarea>
+    <div class="two">
+      <div><label>从哪天开始</label><input type="date" data-e="from" value="${esc(p.from)}"></div>
+      <div><label>吃到哪天为止</label><input type="date" data-e="to" value="${esc(p.to)}"></div>
+    </div>
+    <div class="hint">改这里是长期生效的，以后每天都按新的来。日期留空＝一直有效。</div>
+    <div class="actions">
+      <button class="pill primary" data-action="save-edit" data-where="${where}">保存修改</button>
+      ${p.active?`<button class="pill delete" data-action="stop">停用这条</button>`:`<button class="pill complete" data-action="start">重新启用</button>`}
+      ${p.id.startsWith('custom-')?`<button class="pill delete" data-action="purge">彻底删除</button>`:''}
+    </div>
+  </div>`;
+}
 
 function render(){
   const d=new Date();
   document.getElementById('dateText').textContent=`${d.getFullYear()} 年 ${d.getMonth()+1} 月 ${d.getDate()} 日 · ${weekday[d.getDay()]}`;
-  const sections=[...new Set(day.items.map(x=>x.section))];
-  const box=document.getElementById('sections'); box.innerHTML='';
-  sections.forEach(sec=>{
+  const box=document.getElementById('sections');box.innerHTML='';
+  const secs=[...new Set(day.items.map(x=>x.section))].sort((a,b)=>secRank(a)-secRank(b));
+  secs.forEach(sec=>{
     const arr=day.items.filter(x=>x.section===sec);
     const done=arr.filter(x=>x.done).length;
     const s=document.createElement('div');s.className='section';
     s.innerHTML=`<div class="section-head"><h2>${esc(sec)}</h2><span>${done}/${arr.length}</span></div>`;
     arr.slice().sort((a,b)=>a.time.localeCompare(b.time)).forEach(item=>{
+      const p=planItem(item.id);
       const el=document.createElement('div');
       el.className='item'+(item.done?' done':'')+(item.skipped?' skipped':'')+(isOverdue(item)?' overdue':'');
       el.dataset.id=item.id;
       el.innerHTML=`<div class="row"><div class="time">${esc(item.time)}</div><div class="main">
-        <div class="meta">${esc(item.type)}${item.paused?'<span class="badge stop">停用中</span>':''}${item.confirm?'<span class="badge check">待确认</span>':''}<span class="badge late" data-overdue style="display:${isOverdue(item)?'inline-block':'none'}">已过点</span></div>
+        <div class="meta">${esc(item.type)}${item.confirm?'<span class="badge check">待确认</span>':''}${p&&p.to?`<span class="badge range">吃到 ${esc(p.to)}</span>`:''}<span class="badge late" data-overdue style="display:${isOverdue(item)?'inline-block':'none'}">已过点</span></div>
         <div class="title">${esc(item.title)}</div>
         ${item.desc?`<div class="desc">${esc(item.desc)}</div>`:''}
         ${item.ref?`<div class="desc">${esc(item.ref)}</div>`:''}
         ${renderFields(item)}
         ${noteFor(item)}
-        <details class="details"><summary>注意事项 ▾</summary><p>请以当天医嘱、护士交代和药品说明为准。出现明显不适或指标异常时及时按铃联系护士。</p></details>
         <div class="actions">
           <button class="pill skip" data-action="skip">${item.skipped?'恢复':'今天跳过'}</button>
           <button class="pill complete" data-action="done">${item.done?'取消完成':'标记完成 ✓'}</button>
-          ${item.id.startsWith('custom-')?'<button class="pill delete" data-action="delete">删除</button>':''}
+          ${p?'<button class="pill" data-action="toggle-edit">编辑</button>':'<button class="pill delete" data-action="drop-today">从今天移除</button>'}
         </div>
+        <div data-editbox></div>
       </div></div>`;
       s.appendChild(el);
     });
     box.appendChild(s);
   });
-  updateSummary();
-  renderCharts(); renderHistory();
+  updateSummary();renderPlan();renderCharts();renderHistory();
 }
 function updateSummary(){
-  const total=day.items.length, complete=day.items.filter(x=>x.done).length;
+  const total=day.items.length,complete=day.items.filter(x=>x.done).length;
   document.getElementById('progressText').textContent=`${complete}/${total} 已完成`;
   document.getElementById('progressBar').style.width=(total?complete/total*100:0)+'%';
-  const next=day.items.filter(x=>!x.done&&!x.skipped&&!x.paused).sort((a,b)=>a.time.localeCompare(b.time))[0];
+  const next=day.items.filter(x=>!x.done&&!x.skipped).sort((a,b)=>a.time.localeCompare(b.time))[0];
   document.getElementById('nextTitle').textContent=next?next.title:'今天已全部处理';
   document.getElementById('nextTime').textContent=next?`${next.time} · ${next.type}`:'—';
-  document.getElementById('nextBox').onclick=()=>{if(next){document.querySelector(`[data-id="${next.id}"]`)?.scrollIntoView({behavior:'smooth',block:'center'})}};
+  document.getElementById('nextBox').onclick=()=>{if(next)document.querySelector(`[data-id="${next.id}"]`)?.scrollIntoView({behavior:'smooth',block:'center'})};
 }
-// 轻量刷新：不重建 DOM，避免正在输入的框失焦
 function refreshStatus(){
   day.items.forEach(it=>{
-    const el=document.querySelector(`[data-id="${it.id}"]`);
+    const el=document.querySelector('#sections [data-id="'+it.id+'"]');
     if(!el)return;
     const over=isOverdue(it);
     el.classList.toggle('overdue',over);
@@ -309,13 +422,124 @@ function refreshStatus(){
   updateSummary();
 }
 
-document.getElementById('sections').addEventListener('click',e=>{
+/* ============ 方案页渲染 ============ */
+function planStatus(p){
+  const k=curKey;
+  if(!p.active)return ['停用中','stop'];
+  if(p.from&&p.from>k)return [`${p.from} 起`,'range'];
+  if(p.to&&p.to<k)return [`${p.to} 已结束`,'stop'];
+  if(p.to)return [`吃到 ${p.to}`,'range'];
+  return ['','',];
+}
+function renderPlan(){
+  const box=document.getElementById('planList');box.innerHTML='';
+  const secs=[...new Set(plan.items.map(x=>x.section))].sort((a,b)=>secRank(a)-secRank(b));
+  secs.forEach(sec=>{
+    const arr=plan.items.filter(x=>x.section===sec).slice().sort((a,b)=>a.time.localeCompare(b.time));
+    const on=arr.filter(x=>liveOn(x,curKey)).length;
+    const s=document.createElement('div');s.className='section';
+    s.innerHTML=`<div class="section-head"><h2>${esc(sec)}</h2><span>今天生效 ${on}/${arr.length}</span></div>`;
+    arr.forEach(p=>{
+      const [txt,cls]=planStatus(p);
+      const el=document.createElement('div');
+      el.className='item'+(liveOn(p,curKey)?'':' off');
+      el.dataset.planId=p.id;
+      el.innerHTML=`<div class="row"><div class="time">${esc(p.time)}</div><div class="main">
+        <div class="meta">${esc(p.type)}${p.confirm?'<span class="badge check">待确认</span>':''}${txt?`<span class="badge ${cls}">${esc(txt)}</span>`:''}</div>
+        <div class="title">${esc(p.title)}</div>
+        ${p.desc?`<div class="desc">${esc(p.desc)}</div>`:''}
+        <div class="actions"><button class="pill" data-action="toggle-edit-plan">编辑</button>
+        ${p.active?'<button class="pill delete" data-action="stop">停用</button>':'<button class="pill complete" data-action="start">启用</button>'}</div>
+        <div data-editbox></div>
+      </div></div>`;
+      s.appendChild(el);
+    });
+    box.appendChild(s);
+  });
+}
+
+/* ============ 操作 ============ */
+function readEdit(root){
+  const o={};
+  root.querySelectorAll('[data-e]').forEach(i=>o[i.dataset.e]=i.value);
+  return o;
+}
+function applyEdit(id,vals){
+  const p=planItem(id);if(!p)return;
+  if(!vals.title.trim()){toast('名称不能为空');return false}
+  Object.assign(p,{time:vals.time||p.time,section:vals.section,title:vals.title.trim(),
+    desc:vals.desc.trim(),from:vals.from||'',to:vals.to||''});
+  savePlan();
+  // 同步到今天这一份，保留已打的勾和已填的数字
+  const t=day.items.find(x=>x.id===id);
+  if(t)Object.assign(t,{time:p.time,section:p.section,title:p.title,desc:p.desc});
+  if(t&&!liveOn(p,curKey))day.items=day.items.filter(x=>x.id!==id);
+  return true;
+}
+async function stopItem(id){
+  const p=planItem(id);if(!p)return;
+  const inToday=day.items.some(x=>x.id===id);
+  let alsoToday=false;
+  if(inToday){
+    const r=await choose('停用「'+p.title+'」','明天起不再出现。今天已经排好的这条怎么办？',[
+      {label:'今天也去掉',value:'both',primary:true},
+      {label:'今天保留',value:'future'},
+      {label:'算了',value:'cancel'}
+    ]);
+    if(r==='cancel')return;
+    alsoToday=r==='both';
+  }
+  p.active=false;savePlan();
+  if(alsoToday)day.items=day.items.filter(x=>x.id!==id);
+  save();toast('已停用，明天起不再出现');
+}
+function startItem(id){
+  const p=planItem(id);if(!p)return;
+  p.active=true;
+  if(p.to&&p.to<curKey)p.to='';           // 已过期的结束日期一并清掉，否则启用了也不出现
+  if(p.from&&p.from>curKey)p.from='';
+  savePlan();
+  if(!day.items.some(x=>x.id===id)){
+    day.items.push({id:p.id,section:p.section,time:p.time,type:p.type,title:p.title,
+      desc:p.desc,kind:p.kind,ref:p.ref,confirm:p.confirm,done:false,skipped:false,values:{}});
+  }
+  save();toast('已启用，今天也补回来了');
+}
+function purgeItem(id){
+  plan.items=plan.items.filter(x=>x.id!==id);savePlan();
+  day.items=day.items.filter(x=>x.id!==id);save();toast('已彻底删除');
+}
+function toggleEdit(el,p,where){
+  const box=el.querySelector('[data-editbox]');
+  if(box.innerHTML){box.innerHTML='';return}
+  box.innerHTML=editForm(p,where);
+}
+
+document.getElementById('sections').addEventListener('click',async e=>{
   const btn=e.target.closest('button');if(!btn)return;
-  const el=btn.closest('.item'), item=day.items.find(x=>x.id===el.dataset.id); if(!item)return;
-  if(btn.dataset.action==='done'){item.done=!item.done;if(item.done)item.skipped=false}
-  if(btn.dataset.action==='skip'){item.skipped=!item.skipped;if(item.skipped)item.done=false}
-  if(btn.dataset.action==='delete'){if(!confirm('删除这条事项？'))return;day.items=day.items.filter(x=>x.id!==item.id)}
-  save();
+  const el=btn.closest('.item'),id=el.dataset.id;
+  const item=day.items.find(x=>x.id===id);if(!item)return;
+  const a=btn.dataset.action;
+  if(a==='done'){item.done=!item.done;if(item.done)item.skipped=false;save()}
+  else if(a==='skip'){item.skipped=!item.skipped;if(item.skipped)item.done=false;save()}
+  else if(a==='drop-today'){if(confirm('从今天的清单移除这条？'))
+    {day.items=day.items.filter(x=>x.id!==id);save()}}
+  else if(a==='toggle-edit'){const p=planItem(id);if(p)toggleEdit(el,p,'today')}
+  else if(a==='save-edit'){if(applyEdit(id,readEdit(btn.closest('.edit')))){save();toast('已保存，以后每天都按新的来')}}
+  else if(a==='stop'){await stopItem(id)}
+  else if(a==='start'){startItem(id)}
+  else if(a==='purge'){if(confirm('彻底删除这条？以后都不会再出现。'))purgeItem(id)}
+});
+document.getElementById('planList').addEventListener('click',async e=>{
+  const btn=e.target.closest('button');if(!btn)return;
+  const el=btn.closest('.item'),id=el.dataset.planId;
+  const p=planItem(id);if(!p)return;
+  const a=btn.dataset.action;
+  if(a==='toggle-edit-plan'){toggleEdit(el,p,'plan')}
+  else if(a==='save-edit'){if(applyEdit(id,readEdit(btn.closest('.edit')))){save();toast('已保存')}}
+  else if(a==='stop'){await stopItem(id)}
+  else if(a==='start'){startItem(id)}
+  else if(a==='purge'){if(confirm('彻底删除这条？以后都不会再出现。'))purgeItem(id)}
 });
 document.getElementById('sections').addEventListener('change',e=>{
   const input=e.target;if(!input.dataset.v)return;
@@ -324,120 +548,141 @@ document.getElementById('sections').addEventListener('change',e=>{
   if(input.dataset.v==='mealTime'){
     const names={早餐:'早餐后 2 小时血糖',午餐:'午餐后 2 小时血糖',晚餐:'晚餐后 2 小时血糖'};
     const target=day.items.find(x=>x.title===names[item.title]);
-    if(target && input.value){
+    if(target&&input.value){
       let [h,m]=input.value.split(':').map(Number);h=(h+2)%24;
       target.time=pad(h)+':'+pad(m);
-      toast(`已把「${target.title}」调到 ${target.time}`);
+      toast(`已把「${target.title}」调到 ${target.time}（只改今天）`);
     }
   }
   save();
 });
+
 document.querySelectorAll('.tabs button[data-view]').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('.tabs button[data-view]').forEach(x=>x.classList.toggle('active',x===b));
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===b.dataset.view));
   if(b.dataset.view==='chart')renderCharts();
+  scrollTo({top:0,behavior:'smooth'});
 });
 document.getElementById('topBtn').onclick=()=>scrollTo({top:0,behavior:'smooth'});
 document.getElementById('resetBtn').onclick=()=>{
-  if(confirm('重置今天的完成状态和测量值？已填的数字会一起清掉。')){
-    day={items:makeItems(),createdAt:new Date().toISOString(),notified:[]};save();
+  if(confirm('重置今天的完成状态和测量值？已填的数字会一起清掉，方案不受影响。')){
+    day={items:instantiate(curKey),createdAt:new Date().toISOString(),notified:[]};save();
   }
 };
-document.getElementById('addBtn').onclick=()=>document.getElementById('modal').classList.add('show');
-document.getElementById('cancelNew').onclick=()=>document.getElementById('modal').classList.remove('show');
+document.getElementById('restoreBtn').onclick=()=>{
+  if(!confirm('把长期方案恢复成出厂清单？你加过的、改过的、停用的都会丢失，往日记录不受影响。'))return;
+  plan=factoryPlan();savePlan();
+  day={items:instantiate(curKey),createdAt:new Date().toISOString(),notified:[]};save();
+  toast('已恢复出厂清单');
+};
+
+/* ============ 添加事项 ============ */
+const addModal=document.getElementById('addModal');
+function openAdd(){
+  document.getElementById('newTitle').value='';
+  document.getElementById('newDesc').value='';
+  document.getElementById('newFrom').value='';
+  document.getElementById('newTo').value='';
+  document.getElementById('newOnce').checked=false;
+  addModal.classList.add('show');
+}
+document.getElementById('addBtn').onclick=openAdd;
+document.getElementById('addBtn2').onclick=openAdd;
+document.getElementById('cancelNew').onclick=()=>addModal.classList.remove('show');
 document.getElementById('saveNew').onclick=()=>{
-  const titleEl=document.getElementById('newTitle');
-  const title=titleEl.value.trim();
+  const title=document.getElementById('newTitle').value.trim();
   if(!title){toast('请填写事项名称');return}
-  day.items.push({
-    id:'custom-'+Date.now(),section:'自加',time:document.getElementById('newTime').value,
-    type:document.getElementById('newType').value,title,
-    desc:document.getElementById('newDesc').value.trim(),
-    kind:'none',ref:'',paused:false,confirm:false,done:false,skipped:false,values:{}
+  const o={
+    id:'custom-'+Date.now(),
+    section:document.getElementById('newSection').value,
+    time:document.getElementById('newTime').value,
+    type:document.getElementById('newType').value,
+    title,desc:document.getElementById('newDesc').value.trim(),
+    kind:document.getElementById('newKind').value,ref:'',confirm:false,
+    active:true,from:document.getElementById('newFrom').value,to:document.getElementById('newTo').value
+  };
+  const once=document.getElementById('newOnce').checked;
+  if(!once){plan.items.push(o);savePlan()}
+  if(once||liveOn(o,curKey)){
+    day.items.push({id:o.id,section:o.section,time:o.time,type:o.type,title:o.title,
+      desc:o.desc,kind:o.kind,ref:'',confirm:false,done:false,skipped:false,values:{}});
+  }
+  addModal.classList.remove('show');save();
+  toast(once?'已加到今天':'已加进长期方案');
+};
+
+/* ============ 提醒 ============ */
+document.getElementById('notifyBtn').onclick=async()=>{
+  if(!('Notification' in window)){toast('这个浏览器不支持网页提醒，建议用「导入手机日历」');return}
+  const p=await Notification.requestPermission();
+  toast(p==='granted'?'已开启。注意：只有这个页面开着时才会提醒':'没有拿到通知权限，可以改用「导入手机日历」');
+};
+function fire(item){
+  if('Notification' in window&&Notification.permission==='granted'){
+    try{new Notification(item.title,{body:`${item.time} · ${item.type}`,tag:item.id})}catch(e){}
+  }
+  toast(`${item.time} ${item.title}`);
+}
+function tick(){
+  const k=dateKey();
+  if(k!==curKey){curKey=k;day=ensureDay();saveAll();render();return}
+  const hhmm=nowHHMM();let changed=false;
+  day.items.forEach(it=>{
+    if(it.done||it.skipped)return;
+    if(it.time===hhmm&&!day.notified.includes(it.id)){day.notified.push(it.id);changed=true;fire(it)}
   });
-  document.getElementById('modal').classList.remove('show');
-  titleEl.value='';document.getElementById('newDesc').value='';
-  save();
+  if(changed)saveAll();
+  refreshStatus();
+}
+setInterval(tick,20000);
+
+/* ============ 导出日历 ============ */
+function icsEscape(s){return String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n')}
+function fold(line){
+  const enc=new TextEncoder();let out='',cur='',bytes=0;
+  for(const ch of line){const b=enc.encode(ch).length;
+    if(bytes+b>70){out+=cur+'\r\n ';cur='';bytes=1}cur+=ch;bytes+=b}
+  return out+cur;
+}
+const plainDate=s=>s.replace(/-/g,'');
+document.getElementById('icsBtn').onclick=()=>{
+  const today=plainDate(curKey);
+  const far=new Date();far.setDate(far.getDate()+60);const farKey=plainDate(dateKey(far));
+  const stamp=new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
+  const L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//住院一日清单//ZH','CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH','X-WR-CALNAME:住院一日清单','X-WR-TIMEZONE:Asia/Shanghai'];
+  plan.items.filter(p=>p.active&&(!p.to||p.to>=curKey)).sort((a,b)=>a.time.localeCompare(b.time)).forEach(p=>{
+    const [h,m]=p.time.split(':');
+    const start=p.from&&p.from>curKey?plainDate(p.from):today;
+    const until=p.to?plainDate(p.to):farKey;
+    L.push('BEGIN:VEVENT',`UID:${p.id}-${start}@hospital-checklist`,`DTSTAMP:${stamp}`,
+      `DTSTART:${start}T${h}${m}00`,'DURATION:PT10M',
+      `RRULE:FREQ=DAILY;UNTIL=${until}T235959`,
+      fold(`SUMMARY:${icsEscape(p.type+' · '+p.title)}`));
+    if(p.desc)L.push(fold(`DESCRIPTION:${icsEscape(p.desc)}`));
+    L.push('BEGIN:VALARM','TRIGGER:PT0S','ACTION:DISPLAY',fold(`DESCRIPTION:${icsEscape(p.title)}`),'END:VALARM','END:VEVENT');
+  });
+  L.push('END:VCALENDAR');
+  download(new Blob([L.join('\r\n')],{type:'text/calendar;charset=utf-8'}),'住院一日清单.ics');
+  toast('已生成日历文件，用手机日历打开导入');
 };
 document.getElementById('exportBtn').onclick=()=>{
-  download(new Blob([JSON.stringify(all,null,2)],{type:'application/json'}),'住院一日清单记录-'+curKey+'.json');
+  download(new Blob([JSON.stringify({plan,days:all},null,2)],{type:'application/json'}),'住院一日清单记录-'+curKey+'.json');
 };
 function download(blob,name){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
   document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 
-/* ---------- 到点提醒（页面开着时）---------- */
-document.getElementById('notifyBtn').onclick=async()=>{
-  if(!('Notification' in window)){toast('这个浏览器不支持网页提醒，建议用下面的“导入手机日历”');return}
-  const p=await Notification.requestPermission();
-  toast(p==='granted'?'已开启。注意：只有这个页面开着时才会提醒':'没有拿到通知权限，可以改用“导入手机日历”');
-};
-function fire(item){
-  const body=`${item.time} · ${item.type}`;
-  if('Notification' in window && Notification.permission==='granted'){
-    try{new Notification(item.title,{body,tag:item.id})}catch(e){}
-  }
-  toast(`${item.time} ${item.title}`);
-}
-function tick(){
-  const k=dateKey();
-  if(k!==curKey){curKey=k;day=ensureDay();saveAll(all);render();return}
-  const hhmm=nowHHMM();
-  let changed=false;
-  day.items.forEach(it=>{
-    if(it.done||it.skipped||it.paused)return;
-    if(it.time===hhmm && !day.notified.includes(it.id)){
-      day.notified.push(it.id);changed=true;fire(it);
-    }
-  });
-  if(changed)saveAll(all);
-  refreshStatus();
-}
-setInterval(tick,20000);
-
-/* ---------- 导出日历（系统级提醒）---------- */
-function icsEscape(s){return String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n')}
-function fold(line){
-  const enc=new TextEncoder();let out='',cur='',bytes=0;
-  for(const ch of line){
-    const b=enc.encode(ch).length;
-    if(bytes+b>70){out+=cur+'\r\n ';cur='';bytes=1}
-    cur+=ch;bytes+=b;
-  }
-  return out+cur;
-}
-document.getElementById('icsBtn').onclick=()=>{
-  const d=new Date(),base=`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
-  const stamp=new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
-  const L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//住院一日清单//ZH','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:住院一日清单'];
-  day.items.filter(x=>!x.paused).sort((a,b)=>a.time.localeCompare(b.time)).forEach(it=>{
-    const [h,m]=it.time.split(':');
-    L.push('BEGIN:VEVENT');
-    L.push(`UID:${it.id}-${base}@hospital-checklist`);
-    L.push(`DTSTAMP:${stamp}`);
-    L.push(`DTSTART:${base}T${h}${m}00`);
-    L.push('DURATION:PT10M');
-    L.push('RRULE:FREQ=DAILY');
-    L.push(fold(`SUMMARY:${icsEscape(it.type+' · '+it.title)}`));
-    if(it.desc)L.push(fold(`DESCRIPTION:${icsEscape(it.desc)}`));
-    L.push('BEGIN:VALARM','TRIGGER:PT0S','ACTION:DISPLAY',fold(`DESCRIPTION:${icsEscape(it.title)}`),'END:VALARM');
-    L.push('END:VEVENT');
-  });
-  L.push('END:VCALENDAR');
-  download(new Blob([L.join('\r\n')],{type:'text/calendar;charset=utf-8'}),'住院一日清单.ics');
-  toast('已生成日历文件，用手机日历打开导入即可');
-};
-
-/* ---------- 图表 ---------- */
+/* ============ 图表 ============ */
 function series(kinds,key){
-  return day.items.filter(x=>kinds.includes(x.kind) && x.values[key]!=='' && x.values[key]!=null)
+  return day.items.filter(x=>kinds.includes(x.kind)&&x.values[key]!==''&&x.values[key]!=null)
     .sort((a,b)=>a.time.localeCompare(b.time)).map(x=>({t:x.time,v:+x.values[key]})).filter(x=>!isNaN(x.v));
 }
 function draw(svgId,data,min,max,ref1,ref2){
   const svg=document.getElementById(svgId),W=700,H=220,p=34;svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
   if(!data.length){svg.innerHTML='<text x="50%" y="50%" text-anchor="middle" fill="#7a8490">还没填数字</text>';return}
-  const lo=Math.min(min,...data.map(x=>x.v)), hi=Math.max(max,...data.map(x=>x.v)), span=Math.max(1,hi-lo);
+  const lo=Math.min(min,...data.map(x=>x.v)),hi=Math.max(max,...data.map(x=>x.v)),span=Math.max(1,hi-lo);
   const pts=data.map((x,i)=>{const X=p+(W-2*p)*(data.length===1?.5:i/(data.length-1));const Y=H-p-(H-2*p)*(x.v-lo)/span;return [X,Y,x]});
   let h=`<line x1="${p}" y1="${H-p}" x2="${W-p}" y2="${H-p}" stroke="#ccd2d8"/>`;
   if(ref1!=null){const y=H-p-(H-2*p)*(ref1-lo)/span;h+=`<line x1="${p}" y1="${y}" x2="${W-p}" y2="${y}" stroke="#d9dde2" stroke-dasharray="5 4"/>`}
@@ -460,8 +705,7 @@ function renderHistory(){
   }).join('')||'还没有往日记录。每天的打勾和测量值会自动留在这台手机上。';
 }
 
-render();
-tick();
+render();tick();
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick()});
 </script>
 </body>
