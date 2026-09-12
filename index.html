@@ -1397,6 +1397,7 @@ function dlgOpen(opts){
         '<div class="dlg-b">'+(opts.body||"")+
           (opts.presets?'<div class="dlg-presets">'+opts.presets.map((label,i)=>'<button type="button" data-preset="'+i+'">'+esc(label)+'</button>').join('')+'</div>':'')+
           (isInput ? '<input id="dlgIn" type="'+(opts.type==='time'?'time':'text')+'" aria-label="'+esc(opts.title||'填写内容')+'" '+(opts.numeric?'inputmode="numeric"':'')+' value="'+esc(opts.value||"")+'">' : '')+
+          (isInput&&opts.paste?'<div class="dlg-presets"><button type="button" data-paste="1">粘贴</button></div>':'')+
           (isChoice?'<div class="dlg-choices">'+opts.choices.map((label,i)=>'<button type="button" data-choice="'+i+'">'+esc(label)+'</button>').join('')+'</div>':'')+
         '</div>'+
         '<div class="dlg-f">'+
@@ -1414,6 +1415,17 @@ function dlgOpen(opts){
     mask.addEventListener("click", e=>{
       if(e.target===mask) return done(null);
       const preset=e.target.closest("[data-preset]");if(opts.presets&&preset){const value=opts.presets[Number(preset.dataset.preset)];if(value!==undefined)done(value);return;}
+      const pasteBtn=e.target.closest("[data-paste]");
+      if(pasteBtn&&inp){
+        (async()=>{
+          try{
+            const txt=await navigator.clipboard.readText();
+            if(txt&&txt.trim()){inp.value=txt.trim();pasteBtn.textContent="已粘贴";}
+            else pasteBtn.textContent="剪贴板是空的";
+          }catch(err){ pasteBtn.textContent="读不到剪贴板，请长按输入框粘贴"; }
+        })();
+        return;
+      }
       const choice=e.target.closest("[data-choice]");if(isChoice&&choice){const value=opts.choices[Number(choice.dataset.choice)];if(value!==undefined)done(value);return;}
       const b=e.target.closest("[data-a]"); if(!b) return;
       if(b.dataset.a==="0") return done(null);
@@ -1426,7 +1438,7 @@ function dlgOpen(opts){
   });
 }
 const askConfirm = (title, body, opts)=> dlgOpen(Object.assign({type:"confirm",title,body:body||""}, opts||{}));
-const askText = (title, body, value, numeric)=> dlgOpen({type:"input",title,body:body||"",value:value==null?"":String(value),numeric:!!numeric});
+const askText = (title, body, value, numeric, paste)=> dlgOpen({type:"input",title,body:body||"",value:value==null?"":String(value),numeric:!!numeric,paste:!!paste});
 
 /* ============ 交互 ============ */
 function toggle(id){
@@ -2282,8 +2294,8 @@ boot().catch(function(err){
 /* ============ 同步设置 ============ */
 document.getElementById("btnSyncCfg").addEventListener("click", async ()=>{
   const token=await askText("同步令牌",
-    ghCfg.token?"已经填过了。要换的话粘贴新的，清空则转为本地模式。":"粘贴 GitHub 令牌，两台手机填一样的。",
-    ghCfg.token||"");
+    ghCfg.token?"已经填过了。要换的话粘贴新的，清空则转为本地模式。":"复制好令牌后点下面的「粘贴」，两台手机填一样的。",
+    ghCfg.token||"", false, true);
   if(token===null)return;
   ghCfg={token:(token||"").trim()};
   LS.set(GH_CFG_KEY,ghCfg);
