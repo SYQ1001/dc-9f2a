@@ -1195,13 +1195,24 @@ function tplPatch(it){
 }
 function allItems(){ return ITEMS.map(tplPatch).concat(customItems()); }
 
+function updateTemplateTime(t,itemId,hm){
+  const item=ITEMS.find(it=>it.id===itemId)||(state.config.custom||[]).find(it=>it.id===itemId);
+  const previous=t.t?.[itemId]??item?.t;
+  t.t=t.t||{};t.t[itemId]=hm;
+  // 仅在用餐计划时间发生变化时，向对应餐后血糖单向传递。
+  if(item?.meal&&previous!==hm){
+    for(const glucose of ITEMS.filter(it=>it.m==='bg'&&it.link?.from===itemId&&it.link.off===120)){
+      t.t[glucose.id]=toHM(mins(hm)+120);
+    }
+  }
+}
 function setTplTime(itemId, hm){
   let t=activeTpl();
   if(!t){ // 还在「全部事项」上改时间，就地建一个模版承载它
     t=createTemplate('我的清单', []);
     state.config.activeTpl=t.id;
   }
-  t.t=t.t||{}; t.t[itemId]=hm;
+  updateTemplateTime(t,itemId,hm);
   saveConfig(); renderTemplates(); render();
 }
 function renameItem(itemId, name){
@@ -2815,7 +2826,7 @@ document.addEventListener('click', async (e)=>{
     const v=await dlgOpen({type:'time',title:'几点做？',body:'只改这个模版，其他模版不受影响。',value:cur});
     if(v===null||!sessionOpen)return;
     const current=templates().find(z=>z.id===tid);if(!current){setStatus('模版已被删除，未保存修改。');return;}
-    current.t=current.t||{}; current.t[iid]=v; saveConfig(); renderTemplates();
+    updateTemplateTime(current,iid,v); saveConfig(); renderTemplates();
     if(tid===activeTplId())render();
     return;
   }
@@ -2891,4 +2902,3 @@ document.addEventListener('click', async (e)=>{
 
 
 </body></html>
-
