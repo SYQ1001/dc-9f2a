@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>每日清单</title>
+<meta name="theme-color" content="#1769e0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="每日清单">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231769e0'/%3E%3Cg stroke='white' stroke-width='4' stroke-linecap='round'%3E%3Cpath d='M24 22h18M24 32h18M24 42h18'/%3E%3Cpath d='M13 22l3 3 6-6M13 32l3 3 6-6'/%3E%3C/g%3E%3Ccircle cx='16' cy='42' r='4' fill='none' stroke='white' stroke-width='3'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1>每日清单</h1>
+    <div class="datebar">
+      <button class="mini" id="prevDay">‹ 前一天</button>
+      <span class="date" id="dateText"></span>
+      <button class="mini" id="nextDay">后一天 ›</button>
+      <button class="mini" id="todayBtn">今天</button>
+    </div>
+    <div class="progress">
+      <div class="bar"><i id="progressBar"></i></div>
+      <div class="stat" id="progressText">0/0</div>
+    </div>
+    <div class="next" id="nextBox"><small>下一项</small><strong id="nextTitle">—</strong>
+      <div class="desc" id="nextTime">—</div></div>
+    <div class="notice late" id="overdueBar"></div>
+    <div class="notice cal" id="calBar">模版改过了，日历还是旧的 · 点这里重新导出</div>
+    <div class="tabs">
+      <button class="active" data-view="today">今天</button>
+      <button data-view="template">模版</button>
+      <button data-view="trend">趋势</button>
+      <button data-view="history">记录</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="today" class="view active">
+      <div class="controls">
+        <button class="ghost" id="icsBtn">导出到手机日历</button>
+        <button class="ghost" id="exportBtn">导出记录</button>
+        <button class="ghost" id="importBtn">导入记录</button>
+      </div>
+      <div id="todayList"></div>
+      <div class="panel">
+        <h3>说明</h3>
+        <div class="desc">
+          这张清单按家属口述整理，不是医嘱本身，也不能替代医生判断。每天以护士交代和当天医嘱为准，有出入就去「模版」里改。<br><br>
+          <b>提醒交给手机日历</b>：网页在后台会被系统挂起，不可能准时响。点上面的「导出到手机日历」，让系统来叫你。<br><br>
+          体温 ≥ 38.5 ℃、血糖低于 3.9 mmol/L 或出现心慌出冷汗、输液中出现皮疹胸闷 —— 立刻按铃找护士。
+        </div>
+      </div>
+    </section>
+
+    <section id="template" class="view">
+      <div class="controls">
+        <button class="primary" id="addDefBtn">＋ 添加事项</button>
+      </div>
+      <div class="panel">
+        <h3>长期模版</h3>
+        <div class="desc" id="tplCount"></div>
+        <div class="desc">每天的清单按这里生成。<b>一种药只有一条</b>，一日三次是它的节奏 —— 停药点一次就够。改这里从明天起生效，已经过去的记录不受影响。</div>
+      </div>
+      <div id="tplList"></div>
+    </section>
+
+    <section id="trend" class="view">
+      <div class="panel">
+        <h3 id="trendTitle">趋势</h3>
+        <div class="chips">
+          <button class="mini" data-field="glucose">血糖</button>
+          <button class="mini" data-field="temp">体温</button>
+          <button class="mini" data-field="spo2">血氧</button>
+          <button class="mini" data-field="sys">收缩压</button>
+          <button class="mini" data-field="dia">舒张压</button>
+        </div>
+        <div class="chips">
+          <button class="mini" data-win="7">7 天</button>
+          <button class="mini" data-win="30">30 天</button>
+          <button class="mini" data-win="90">90 天</button>
+        </div>
+        <svg id="trendChart"></svg>
+        <div class="desc" id="trendStat"></div>
+      </div>
+      <div class="panel">
+        <h3>依从性</h3>
+        <div class="progress">
+          <div class="bar"><i id="adhBar"></i></div>
+          <div class="stat" id="adhText"></div>
+        </div>
+        <div class="desc" id="adhDetail"></div>
+      </div>
+    </section>
+
+    <section id="history" class="view">
+      <div class="panel">
+        <h3>记录</h3>
+        <div class="desc">点某天展开当天明细。复诊时直接翻这里给医生看。</div>
+      </div>
+      <div id="historyList"></div>
+    </section>
+  </main>
+</div>
+
+<div class="modal" id="icsModal">
+  <div class="sheet">
+    <h3>导出到手机日历</h3>
+    <div class="desc">导入后由系统提醒，锁屏也会响。建议先在日历里新建一个分组（比如叫「用药」），出院后整组删掉。</div>
+    <label>导出哪些类别</label>
+    <div id="icsTypes">
+      <label class="check"><input type="checkbox" value="服药" checked> 服药</label>
+      <label class="check"><input type="checkbox" value="输液" checked> 输液</label>
+      <label class="check"><input type="checkbox" value="就诊" checked> 就诊</label>
+      <label class="check"><input type="checkbox" value="测量"> 测量</label>
+      <label class="check"><input type="checkbox" value="护理"> 护理</label>
+      <label class="check"><input type="checkbox" value="进食"> 进食</label>
+    </div>
+    <div class="hint">测量和护理默认不勾 —— 全导进去每天几十条提醒，反而会让人开始无视它。漏了有后果的才值得响。</div>
+    <div class="actions">
+      <button class="primary" id="icsRun">生成日历文件</button>
+      <button class="ghost" id="icsClose">取消</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="importModal">
+  <div class="sheet">
+    <h3>导入记录</h3>
+    <div class="desc">和现有数据合并，不会清空。同一条记录不会重复导入。</div>
+    <label>选文件</label><input id="importFile" type="file" accept=".json,application/json">
+    <label>或直接粘贴 JSON</label><textarea id="importText" rows="5" spellcheck="false"></textarea>
+    <label class="check"><input type="checkbox" id="importWin"> 事项定义冲突时，以导入的为准</label>
+    <div class="actions">
+      <button class="primary" id="importRun">导入</button>
+      <button class="ghost" id="importClose">取消</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="choiceModal">
+  <div class="sheet">
+    <h3 data-title>确认</h3>
+    <div class="pre" data-msg></div>
+    <div class="actions" data-opts></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
