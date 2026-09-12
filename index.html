@@ -831,7 +831,9 @@ function queueScope(path,value){
 const LOCAL_KEY="care.local.entries.v1";
 const GH_CFG_KEY="care.sync.github.v1";
 let localMode=false;
-let ghCfg=LS.get(GH_CFG_KEY)||{repo:"",token:""};
+const GH_REPO="SYQ1001/dc-9f2a-data";
+let ghCfg=LS.get(GH_CFG_KEY)||{token:""};
+if(ghCfg&&ghCfg.repo)delete ghCfg.repo;   // 旧格式里存过仓库名，现在写死在代码里
 let ghEtag=null, ghSha=null, ghCache=null;
 
 function localEntries(){return LS.get(LOCAL_KEY)||{};}
@@ -845,10 +847,10 @@ function markLocal(msg){
   localModeMsg=msg||"本地模式 · 记录只存在这台手机上";
   if(!localMode){localMode=true;syncMessage(localModeMsg);}
 }
-const ghOn=()=>!!(ghCfg.repo&&ghCfg.token);
+const ghOn=()=>!!ghCfg.token;
 const b64ToStr=b=>new TextDecoder().decode(Uint8Array.from(atob(String(b).replace(/\s/g,"")),c=>c.charCodeAt(0)));
 const strToB64=s=>{let bin="";for(const b of new TextEncoder().encode(s))bin+=String.fromCharCode(b);return btoa(bin);};
-const ghURL=()=>"https://api.github.com/repos/"+ghCfg.repo+"/contents/data.json";
+const ghURL=()=>"https://api.github.com/repos/"+GH_REPO+"/contents/data.json";
 const ghHead=()=>({"Authorization":"Bearer "+ghCfg.token,"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"});
 
 async function ghRead(force){
@@ -2279,20 +2281,20 @@ boot().catch(function(err){
 
 /* ============ 同步设置 ============ */
 document.getElementById("btnSyncCfg").addEventListener("click", async ()=>{
-  const repo=await askText("数据仓库","格式 用户名/仓库名，两台手机填一样的",ghCfg.repo||"SYQ1001/dc-9f2a-data");
-  if(repo===null)return;
-  const token=await askText("访问令牌","GitHub 细粒度令牌，只授权给数据仓库",ghCfg.token||"");
+  const token=await askText("同步令牌",
+    ghCfg.token?"已经填过了。要换的话粘贴新的，清空则转为本地模式。":"粘贴 GitHub 令牌，两台手机填一样的。",
+    ghCfg.token||"");
   if(token===null)return;
-  ghCfg={repo:(repo||"").trim(),token:(token||"").trim()};
+  ghCfg={token:(token||"").trim()};
   LS.set(GH_CFG_KEY,ghCfg);
-  ghEtag=null;ghSha=null;ghCache=null;localMode=false;
-  if(!ghOn()){markLocal();return;}
+  ghEtag=null;ghSha=null;ghCache=null;localMode=false;localModeMsg="";
+  if(!ghOn()){markLocal("已切回本地模式 · 记录只存在这台手机上");return;}
   syncMessage("正在连接云端…");
   try{
     await syncPull(true);
     await flushCloud();
-    syncMessage("已连上云端 · 家人可共同记录");
-  }catch(e){ syncMessage("连接失败："+(e.message||e)); }
+    if(!localMode)syncMessage("已连上云端 · 家人可共同记录");
+  }catch(e){ syncMessage("连接失败："+(e.message||e),true); }
 });
 </script>
 
