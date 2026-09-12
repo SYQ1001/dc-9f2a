@@ -69,6 +69,14 @@
 .dlg-tip{margin-top:7px;font-size:12px;color:var(--ink-2);min-height:1.1em;text-align:right}
 .dlg-tip.warn{color:#B00020}
 .dlg-tip.ok{color:var(--accent)}
+
+/* 再测一次：分量低于主操作，跟在测量输入区后面 */
+.remeasure{
+  margin-left:8px;padding:4px 10px;font-size:12px;font-family:inherit;font-weight:600;
+  border:1px dashed var(--line-2);border-radius:999px;
+  background:transparent;color:var(--ink-2);line-height:1.4;vertical-align:middle;
+}
+.remeasure:active{background:var(--surface-2);color:var(--ink);border-style:solid}
 </style>
 <title>住院一日清单</title>
 <style>
@@ -1320,6 +1328,14 @@ function ring(){
 }
 
 function valueFields(it){
+  // 包一层：在测量输入区末尾挂一个「再测一次」，不动原有三个分支
+  let html=valueFieldsCore(it);
+  if(it.m && !it.reOf && !isOff(it)){
+    html+='<button type="button" class="remeasure" data-remeasure="'+it.id+'">再测一次</button>';
+  }
+  return html;
+}
+function valueFieldsCore(it){
   const r = state.items[it.id]||{}, v = r.v || {};
   if(it.m==='spo2')return '<div class="vrow"><div class="vfield'+(v.spo2!==undefined&&String(v.spo2).trim()!==''&&Number(v.spo2)<95?' out':'')+'"><label for="f-'+it.id+'-spo2">血氧</label><input id="f-'+it.id+'-spo2" data-vid="'+it.id+'" data-k="spo2" inputmode="numeric" placeholder="—" value="'+esc(v.spo2??'')+'" style="width:54px"><span class="unit">%</span></div><span class="refnote">'+esc(it.refTxt||'')+'</span></div>';
   if(it.m === "bp"){
@@ -1762,6 +1778,32 @@ $("#btnAutoShift").addEventListener("click", ()=>{
   setStatus(state.config.autoShift
     ? "自动顺延已打开：改动某项时间后，标准顺序里排在它后面的事项会跟着一起挪。"
     : "自动顺延已关闭：现在改时间只影响这一项，适合处理特殊情况。调完记得再打开。");
+});
+
+/* 再测一次：基于已有测量事项克隆一条当天的临时事项。
+   不改记录结构，走已有的自定义事项机制，所以不存在覆盖早先那次的风险。 */
+async function remeasure(srcId){
+  const src=allItems().find(i=>i.id===srcId);
+  if(!src||!src.m){setStatus("这条不是测量事项。");return;}
+  const now=hhmmNow();
+  const tt=await dlgOpen({type:'time',title:'几点测的？',body:'默认当前时间，可以改。',value:now});
+  if(tt===null)return;
+  const baseTitle=(titleOf(src)||src.title||'测量').replace(/（第\s*\d+\s*次）\s*$/,'').trim();
+  const sameDay=customItems(state.date).filter(c=>c.reOf===srcId||c.title.startsWith(baseTitle));
+  state.config.custom=state.config.custom||[];
+  state.config.custom.push({
+    id:"r"+Date.now().toString(36), date:state.date, t:tt, kind:"测量",
+    title:baseTitle+"（加测 "+(sameDay.length+1)+"）",
+    sub:"临时加测 · 只在今天",
+    m:src.m, ref:src.ref||null, refTxt:src.refTxt||"", reOf:srcId
+  });
+  saveConfig(); render();
+  setStatus("已加一条「"+baseTitle+"」在 "+tt+"，填数值即可。早先那次不受影响。");
+}
+
+document.addEventListener("click", (e)=>{
+  const rm=e.target.closest("[data-remeasure]");
+  if(rm){ remeasure(rm.dataset.remeasure); }
 });
 
 $("#btnAddItem").addEventListener("click", async ()=>{
