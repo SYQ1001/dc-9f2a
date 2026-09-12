@@ -34,7 +34,9 @@ h1{font-size:25px;margin:5px 0 3px}
 .tabs{display:flex;gap:8px;margin-top:12px;overflow:auto;-webkit-overflow-scrolling:touch}
 .tabs button,.pill,.mini,.primary,.ghost{border:0;border-radius:10px;padding:9px 12px;background:#f0f2f4;color:var(--text);cursor:pointer;white-space:nowrap}
 .tabs button.active,.primary{background:var(--accent);color:#fff}
-.sync{font-size:12px;color:var(--ok);margin-top:9px}
+.sync{font-size:12px;margin-top:9px;color:var(--muted);cursor:pointer}
+.sync.ok{color:var(--ok)}
+.sync.bad{color:var(--warn)}
 .section{margin-top:20px}
 .section-head{display:flex;justify-content:space-between;align-items:center;margin:0 3px 8px}
 .section-head h2{font-size:17px;margin:0}
@@ -64,8 +66,6 @@ h1{font-size:25px;margin:5px 0 3px}
 .complete{background:#e9f8ef;color:var(--ok)}
 .skip{background:#fff5e7;color:var(--warn)}
 .delete{background:#fff0f0;color:var(--danger)}
-.details{margin-top:9px;font-size:12px}
-.details summary{cursor:pointer;color:#4b5663}
 .edit{margin-top:10px;background:#fafbfc;border:1px solid var(--line);border-radius:12px;padding:12px}
 .edit label{display:block;font-size:11px;color:var(--muted);margin:8px 0 4px}
 .edit input,.edit textarea,.edit select{width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;background:#fff;font-size:16px}
@@ -107,7 +107,7 @@ svg{width:100%;height:240px}
       <button data-view="history">往日</button>
       <button id="topBtn">回到顶部</button>
     </div>
-    <div class="sync">记录只存在这台手机上，不会上传</div>
+    <div class="sync" id="syncLine">未开启同步 · 点这里设置</div>
   </header>
 
   <main>
@@ -147,7 +147,7 @@ svg{width:100%;height:240px}
     <section id="history" class="view">
       <div class="chartbox">
         <h3>往日记录</h3>
-        <div id="historyList" class="desc">还没有往日记录。每天的打勾和测量值会自动留在这台手机上。</div>
+        <div id="historyList" class="desc">还没有往日记录。</div>
       </div>
     </section>
   </main>
@@ -179,6 +179,24 @@ svg{width:100%;height:240px}
   </div>
 </div>
 
+<div class="modal" id="syncModal">
+  <div class="sheet">
+    <h3>同步设置</h3>
+    <div class="desc">填好之后，两部手机的打勾和测量值会自动合并。断网时照常能用，联网后自动补上。</div>
+    <label for="syncUrl">同步地址</label>
+    <input id="syncUrl" placeholder="https://xxx.workers.dev" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <label for="syncKey">家庭口令</label>
+    <input id="syncKey" type="password" placeholder="和另一部手机填一样的" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <label class="check"><input type="checkbox" id="syncOn"> 开启同步</label>
+    <div class="hint" id="syncInfo"></div>
+    <div class="actions">
+      <button class="primary" id="syncSave">保存</button>
+      <button class="ghost" id="syncNow">立即同步</button>
+      <button class="ghost" id="syncClose">关闭</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="choiceModal">
   <div class="sheet">
     <h3 data-title>确认</h3>
@@ -192,16 +210,21 @@ svg{width:100%;height:240px}
 <script>
 const KEY='hospitalDailyChecklist_v1';
 const PLAN_KEY='hospitalChecklistPlan_v1';
+const SYNC_KEY='hospitalChecklistSync_v1';
 const pad=n=>String(n).padStart(2,'0');
-// 本地日期，不用 toISOString（那个取的是 UTC，UTC+8 的早上 8 点前会算成昨天）
 const dateKey=(d=new Date())=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 const nowHHMM=(d=new Date())=>`${pad(d.getHours())}:${pad(d.getMinutes())}`;
 const weekday=['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const SECTIONS=['清晨','上午','中午','下午','傍晚','睡前','自加'];
 const secRank=s=>{const i=SECTIONS.indexOf(s);return i<0?99:i};
+// 每次改动都盖时间戳，两台手机合并时按字段取新的那份
+function stamp(o,...fields){o._ts=o._ts||{};const t=Date.now();fields.forEach(f=>o._ts[f]=t);return o}
+function stampAll(o){o._ts=o._ts||{};const t=Date.now();
+  Object.keys(o).forEach(k=>{if(k!=='_ts'&&k!=='values')o._ts[k]=t});
+  Object.keys(o.values||{}).forEach(k=>o._ts['values.'+k]=t);return o}
 
-/* ============ 出厂模板：只在第一次运行时用来生成方案 ============ */
+/* ============ 出厂模板 ============ */
 // [分区, 时间, 类别, 名称, 说明, 录入字段, 参考值, 出厂停用, 待确认]
 const template=[
 ["清晨","06:45","测量","空腹血糖","必须在吃早饭、吃降糖药之前测","glucose","参考 4.4–7.0"],
@@ -251,40 +274,79 @@ const template=[
 ["睡前","22:00","测量","血压","血压 < 140/90 · 血氧 ≥ 95%","bp"],
 ["睡前","23:00","服药","抗血小板 · 硫酸氢氯吡格雷片","每天固定时间，一片，防脑梗复发"]
 ];
-
 function factoryPlan(){
-  return {items:template.map((x,i)=>({
+  return {items:template.map((x,i)=>stampAll({
     id:'base-'+i,section:x[0],time:x[1],type:x[2],title:x[3],desc:x[4]||'',
     kind:x[5]||'none',ref:x[6]||'',confirm:!!x[8],
-    active:!x[7],from:'',to:''
+    active:!x[7],from:'',to:'',deleted:false
   })),updatedAt:new Date().toISOString()};
+}
+
+/* ============ 合并（两台手机各改各的，按字段取新的） ============ */
+function mergeObj(a,b){
+  const ta=a._ts||{},tb=b._ts||{},out={...a};
+  new Set([...Object.keys(a),...Object.keys(b)]).forEach(k=>{
+    if(k==='_ts'||k==='values')return;
+    if(!(k in a)||(tb[k]||0)>(ta[k]||0))out[k]=b[k];
+  });
+  const va=a.values||{},vb=b.values||{};
+  if(a.values||b.values){
+    out.values={...va};
+    new Set([...Object.keys(va),...Object.keys(vb)]).forEach(k=>{
+      if(!(k in va)||(tb['values.'+k]||0)>(ta['values.'+k]||0))out.values[k]=vb[k];
+    });
+  }
+  const ts={...ta};
+  Object.keys(tb).forEach(k=>{if((tb[k]||0)>(ts[k]||0))ts[k]=tb[k]});
+  out._ts=ts;
+  return out;
+}
+function mergeList(a=[],b=[]){
+  const map=new Map();
+  a.forEach(x=>map.set(x.id,x));
+  b.forEach(x=>map.set(x.id,map.has(x.id)?mergeObj(map.get(x.id),x):x));
+  return [...map.values()];
+}
+function mergeState(a,b){
+  if(!b)return a;if(!a)return b;
+  const days={};
+  new Set([...Object.keys(a.days||{}),...Object.keys(b.days||{})]).forEach(k=>{
+    const da=(a.days||{})[k],db=(b.days||{})[k];
+    if(!da){days[k]=db;return}if(!db){days[k]=da;return}
+    days[k]={...da,items:mergeList(da.items,db.items),
+      notified:[...new Set([...(da.notified||[]),...(db.notified||[])])]};
+  });
+  return {plan:{items:mergeList((a.plan||{}).items,(b.plan||{}).items),
+    updatedAt:new Date().toISOString()},days};
 }
 
 /* ============ 存取 ============ */
 function loadPlan(){
-  try{
-    const p=JSON.parse(localStorage.getItem(PLAN_KEY));
-    if(p&&Array.isArray(p.items)&&p.items.length)return p;
-  }catch(e){}
+  try{const p=JSON.parse(localStorage.getItem(PLAN_KEY));
+    if(p&&Array.isArray(p.items)&&p.items.length)return p}catch(e){}
   const f=factoryPlan();localStorage.setItem(PLAN_KEY,JSON.stringify(f));return f;
 }
 function savePlan(){plan.updatedAt=new Date().toISOString();
-  try{localStorage.setItem(PLAN_KEY,JSON.stringify(plan))}catch(e){toast('方案保存失败，手机存储可能已满')}}
+  try{localStorage.setItem(PLAN_KEY,JSON.stringify(plan))}catch(e){toast('方案保存失败，手机存储可能已满')}
+  schedulePush()}
 function loadAll(){try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){return {}}}
-function saveAll(){try{localStorage.setItem(KEY,JSON.stringify(all))}catch(e){toast('保存失败，手机存储可能已满')}}
+function saveAll(){try{localStorage.setItem(KEY,JSON.stringify(all))}catch(e){toast('保存失败，手机存储可能已满')}
+  schedulePush()}
 
 let plan=loadPlan();
 let all=loadAll();
 let curKey=dateKey();
 
+const alive=p=>!p.deleted;
 const inRange=(it,k)=>(!it.from||it.from<=k)&&(!it.to||it.to>=k);
-const liveOn=(it,k)=>it.active&&inRange(it,k);
+const liveOn=(it,k)=>alive(it)&&it.active&&inRange(it,k);
+const shown=it=>!it.removed;
 
 function instantiate(k){
-  return plan.items.filter(it=>liveOn(it,k)).map(it=>({
+  return plan.items.filter(it=>liveOn(it,k)).map(it=>stampAll({
     id:it.id,section:it.section,time:it.time,type:it.type,title:it.title,
     desc:it.desc,kind:it.kind,ref:it.ref,confirm:it.confirm,
-    done:false,skipped:false,values:{}
+    done:false,skipped:false,removed:false,values:{}
   }));
 }
 function ensureDay(){
@@ -293,7 +355,71 @@ function ensureDay(){
   return all[curKey];
 }
 let day=ensureDay();
+const visible=()=>day.items.filter(shown);
 function save(){all[curKey]=day;saveAll();render()}
+
+/* ============ 同步 ============ */
+let sync={url:'',key:'',on:false,rev:0};
+try{Object.assign(sync,JSON.parse(localStorage.getItem(SYNC_KEY))||{})}catch(e){}
+let syncState='off',syncAt=null,pushTimer=null,pushing=false;
+function saveSyncCfg(){localStorage.setItem(SYNC_KEY,JSON.stringify(sync))}
+function setSync(s){syncState=s;paintSync()}
+function paintSync(){
+  const el=document.getElementById('syncLine');
+  const map={off:['未开启同步 · 点这里设置',''],busy:['同步中…',''],
+    ok:['已同步 '+(syncAt||'')+' · 点这里设置','ok'],
+    bad:['同步不上，数据先存本地 · 点这里设置','bad'],
+    auth:['口令不对 · 点这里设置','bad']};
+  const [txt,cls]=map[syncState]||map.off;
+  el.textContent=txt;el.className='sync '+cls;
+}
+function snapshot(){return {plan,days:all}}
+function adopt(state){
+  plan=state.plan;all=state.days||{};
+  localStorage.setItem(PLAN_KEY,JSON.stringify(plan));
+  localStorage.setItem(KEY,JSON.stringify(all));
+  curKey=dateKey();day=ensureDay();all[curKey]=day;
+  localStorage.setItem(KEY,JSON.stringify(all));
+}
+async function api(method,body){
+  const r=await fetch(sync.url.replace(/\/+$/,'')+'/data',{
+    method,headers:{'content-type':'application/json','x-family-key':sync.key},
+    body:body?JSON.stringify(body):undefined});
+  return {status:r.status,json:await r.json().catch(()=>({}))};
+}
+async function pull(){
+  if(!sync.on||!sync.url||!sync.key)return;
+  setSync('busy');
+  try{
+    const {status,json}=await api('GET');
+    if(status===401){setSync('auth');return}
+    if(status!==200){setSync('bad');return}
+    sync.rev=json.rev||0;saveSyncCfg();
+    if(json.data){adopt(mergeState(snapshot(),json.data));render()}
+    syncAt=nowHHMM();setSync('ok');
+  }catch(e){setSync('bad')}
+}
+function schedulePush(){
+  if(!sync.on||!sync.url||!sync.key)return;
+  clearTimeout(pushTimer);
+  pushTimer=setTimeout(push,3000);   // 防抖，别把 KV 每天 1000 次写额度烧光
+}
+async function push(retry=0){
+  if(!sync.on||!sync.url||!sync.key||pushing)return;
+  pushing=true;setSync('busy');
+  try{
+    const {status,json}=await api('PUT',{rev:sync.rev,data:snapshot()});
+    if(status===200){sync.rev=json.rev;saveSyncCfg();syncAt=nowHHMM();setSync('ok')}
+    else if(status===409&&retry<2){
+      sync.rev=json.rev||0;
+      if(json.data){adopt(mergeState(snapshot(),json.data));render()}
+      pushing=false;return push(retry+1);
+    }
+    else if(status===401)setSync('auth');
+    else setSync('bad');
+  }catch(e){setSync('bad')}
+  pushing=false;
+}
 
 /* ============ 小工具 ============ */
 function toast(msg){
@@ -306,19 +432,15 @@ function choose(title,msg,opts){
     m.querySelector('[data-title]').textContent=title;
     m.querySelector('[data-msg]').textContent=msg;
     const box=m.querySelector('[data-opts]');box.innerHTML='';
-    opts.forEach(o=>{
-      const b=document.createElement('button');
-      b.className='pill '+(o.primary?'primary':'ghost');
-      b.textContent=o.label;
-      b.onclick=()=>{m.classList.remove('show');res(o.value)};
-      box.appendChild(b);
-    });
+    opts.forEach(o=>{const b=document.createElement('button');
+      b.className='pill '+(o.primary?'primary':'ghost');b.textContent=o.label;
+      b.onclick=()=>{m.classList.remove('show');res(o.value)};box.appendChild(b)});
     m.classList.add('show');
   });
 }
-const planItem=id=>plan.items.find(x=>x.id===id);
+const planItem=id=>plan.items.find(x=>x.id===id&&alive(x));
 
-/* ============ 今日清单渲染 ============ */
+/* ============ 今日渲染 ============ */
 function renderFields(item){
   const v=k=>esc(item.values[k]||'');
   if(item.kind==='glucose')return `<div class="fields"><div class="field"><label>血糖 mmol/L</label><input inputmode="decimal" data-v="glucose" value="${v('glucose')}"></div></div>`;
@@ -334,9 +456,8 @@ function renderFields(item){
   return '';
 }
 function noteFor(item){
-  if(item.kind==='glucose'&&item.values.glucose){
-    if(+item.values.glucose<3.9)return `<div class="desc" style="color:var(--danger)">⚠ 血糖低于 3.9 mmol/L，请立即联系护士。</div>`;
-  }
+  if(item.kind==='glucose'&&item.values.glucose&&+item.values.glucose<3.9)
+    return `<div class="desc" style="color:var(--danger)">⚠ 血糖低于 3.9 mmol/L，请立即联系护士。</div>`;
   if(item.kind==='temp'&&item.values.temp&&+item.values.temp>=38.5)
     return `<div class="desc" style="color:var(--danger)">⚠ 体温 ≥ 38.5 ℃，请立即联系护士。</div>`;
   if((item.kind==='bp'||item.kind==='spo2')&&item.values.spo2&&+item.values.spo2<95)
@@ -345,8 +466,8 @@ function noteFor(item){
 }
 const isOverdue=it=>!it.done&&!it.skipped&&it.time<nowHHMM();
 
-function editForm(p,where){
-  return `<div class="edit" data-edit-for="${esc(p.id)}">
+function editForm(p){
+  return `<div class="edit">
     <div class="two">
       <div><label>时间</label><input type="time" data-e="time" value="${esc(p.time)}"></div>
       <div><label>分区</label><select data-e="section">${SECTIONS.map(s=>`<option${s===p.section?' selected':''}>${esc(s)}</option>`).join('')}</select></div>
@@ -359,23 +480,22 @@ function editForm(p,where){
     </div>
     <div class="hint">改这里是长期生效的，以后每天都按新的来。日期留空＝一直有效。</div>
     <div class="actions">
-      <button class="pill primary" data-action="save-edit" data-where="${where}">保存修改</button>
+      <button class="pill primary" data-action="save-edit">保存修改</button>
       ${p.active?`<button class="pill delete" data-action="stop">停用这条</button>`:`<button class="pill complete" data-action="start">重新启用</button>`}
       ${p.id.startsWith('custom-')?`<button class="pill delete" data-action="purge">彻底删除</button>`:''}
     </div>
   </div>`;
 }
-
 function render(){
   const d=new Date();
   document.getElementById('dateText').textContent=`${d.getFullYear()} 年 ${d.getMonth()+1} 月 ${d.getDate()} 日 · ${weekday[d.getDay()]}`;
   const box=document.getElementById('sections');box.innerHTML='';
-  const secs=[...new Set(day.items.map(x=>x.section))].sort((a,b)=>secRank(a)-secRank(b));
+  const items=visible();
+  const secs=[...new Set(items.map(x=>x.section))].sort((a,b)=>secRank(a)-secRank(b));
   secs.forEach(sec=>{
-    const arr=day.items.filter(x=>x.section===sec);
-    const done=arr.filter(x=>x.done).length;
+    const arr=items.filter(x=>x.section===sec);
     const s=document.createElement('div');s.className='section';
-    s.innerHTML=`<div class="section-head"><h2>${esc(sec)}</h2><span>${done}/${arr.length}</span></div>`;
+    s.innerHTML=`<div class="section-head"><h2>${esc(sec)}</h2><span>${arr.filter(x=>x.done).length}/${arr.length}</span></div>`;
     arr.slice().sort((a,b)=>a.time.localeCompare(b.time)).forEach(item=>{
       const p=planItem(item.id);
       const el=document.createElement('div');
@@ -402,48 +522,42 @@ function render(){
   updateSummary();renderPlan();renderCharts();renderHistory();
 }
 function updateSummary(){
-  const total=day.items.length,complete=day.items.filter(x=>x.done).length;
+  const items=visible();
+  const total=items.length,complete=items.filter(x=>x.done).length;
   document.getElementById('progressText').textContent=`${complete}/${total} 已完成`;
   document.getElementById('progressBar').style.width=(total?complete/total*100:0)+'%';
-  const next=day.items.filter(x=>!x.done&&!x.skipped).sort((a,b)=>a.time.localeCompare(b.time))[0];
+  const next=items.filter(x=>!x.done&&!x.skipped).sort((a,b)=>a.time.localeCompare(b.time))[0];
   document.getElementById('nextTitle').textContent=next?next.title:'今天已全部处理';
   document.getElementById('nextTime').textContent=next?`${next.time} · ${next.type}`:'—';
-  document.getElementById('nextBox').onclick=()=>{if(next)document.querySelector(`[data-id="${next.id}"]`)?.scrollIntoView({behavior:'smooth',block:'center'})};
+  document.getElementById('nextBox').onclick=()=>{if(next)document.querySelector(`#sections [data-id="${next.id}"]`)?.scrollIntoView({behavior:'smooth',block:'center'})};
 }
 function refreshStatus(){
-  day.items.forEach(it=>{
-    const el=document.querySelector('#sections [data-id="'+it.id+'"]');
-    if(!el)return;
-    const over=isOverdue(it);
-    el.classList.toggle('overdue',over);
-    const b=el.querySelector('[data-overdue]');
-    if(b)b.style.display=over?'inline-block':'none';
+  visible().forEach(it=>{
+    const el=document.querySelector('#sections [data-id="'+it.id+'"]');if(!el)return;
+    const over=isOverdue(it);el.classList.toggle('overdue',over);
+    const b=el.querySelector('[data-overdue]');if(b)b.style.display=over?'inline-block':'none';
   });
   updateSummary();
 }
-
-/* ============ 方案页渲染 ============ */
 function planStatus(p){
-  const k=curKey;
   if(!p.active)return ['停用中','stop'];
-  if(p.from&&p.from>k)return [`${p.from} 起`,'range'];
-  if(p.to&&p.to<k)return [`${p.to} 已结束`,'stop'];
+  if(p.from&&p.from>curKey)return [`${p.from} 起`,'range'];
+  if(p.to&&p.to<curKey)return [`${p.to} 已结束`,'stop'];
   if(p.to)return [`吃到 ${p.to}`,'range'];
-  return ['','',];
+  return ['',''];
 }
 function renderPlan(){
   const box=document.getElementById('planList');box.innerHTML='';
-  const secs=[...new Set(plan.items.map(x=>x.section))].sort((a,b)=>secRank(a)-secRank(b));
+  const live=plan.items.filter(alive);
+  const secs=[...new Set(live.map(x=>x.section))].sort((a,b)=>secRank(a)-secRank(b));
   secs.forEach(sec=>{
-    const arr=plan.items.filter(x=>x.section===sec).slice().sort((a,b)=>a.time.localeCompare(b.time));
-    const on=arr.filter(x=>liveOn(x,curKey)).length;
+    const arr=live.filter(x=>x.section===sec).slice().sort((a,b)=>a.time.localeCompare(b.time));
     const s=document.createElement('div');s.className='section';
-    s.innerHTML=`<div class="section-head"><h2>${esc(sec)}</h2><span>今天生效 ${on}/${arr.length}</span></div>`;
+    s.innerHTML=`<div class="section-head"><h2>${esc(sec)}</h2><span>今天生效 ${arr.filter(x=>liveOn(x,curKey)).length}/${arr.length}</span></div>`;
     arr.forEach(p=>{
       const [txt,cls]=planStatus(p);
       const el=document.createElement('div');
-      el.className='item'+(liveOn(p,curKey)?'':' off');
-      el.dataset.planId=p.id;
+      el.className='item'+(liveOn(p,curKey)?'':' off');el.dataset.planId=p.id;
       el.innerHTML=`<div class="row"><div class="time">${esc(p.time)}</div><div class="main">
         <div class="meta">${esc(p.type)}${p.confirm?'<span class="badge check">待确认</span>':''}${txt?`<span class="badge ${cls}">${esc(txt)}</span>`:''}</div>
         <div class="title">${esc(p.title)}</div>
@@ -459,104 +573,95 @@ function renderPlan(){
 }
 
 /* ============ 操作 ============ */
-function readEdit(root){
-  const o={};
-  root.querySelectorAll('[data-e]').forEach(i=>o[i.dataset.e]=i.value);
-  return o;
-}
-function applyEdit(id,vals){
-  const p=planItem(id);if(!p)return;
-  if(!vals.title.trim()){toast('名称不能为空');return false}
-  Object.assign(p,{time:vals.time||p.time,section:vals.section,title:vals.title.trim(),
-    desc:vals.desc.trim(),from:vals.from||'',to:vals.to||''});
-  savePlan();
-  // 同步到今天这一份，保留已打的勾和已填的数字
+function readEdit(root){const o={};root.querySelectorAll('[data-e]').forEach(i=>o[i.dataset.e]=i.value);return o}
+function applyEdit(id,v){
+  const p=planItem(id);if(!p)return false;
+  if(!v.title.trim()){toast('名称不能为空');return false}
+  Object.assign(p,{time:v.time||p.time,section:v.section,title:v.title.trim(),
+    desc:v.desc.trim(),from:v.from||'',to:v.to||''});
+  stamp(p,'time','section','title','desc','from','to');savePlan();
   const t=day.items.find(x=>x.id===id);
-  if(t)Object.assign(t,{time:p.time,section:p.section,title:p.title,desc:p.desc});
-  if(t&&!liveOn(p,curKey))day.items=day.items.filter(x=>x.id!==id);
+  if(t){Object.assign(t,{time:p.time,section:p.section,title:p.title,desc:p.desc});
+    stamp(t,'time','section','title','desc');
+    if(!liveOn(p,curKey)){t.removed=true;stamp(t,'removed')}}
   return true;
 }
 async function stopItem(id){
   const p=planItem(id);if(!p)return;
-  const inToday=day.items.some(x=>x.id===id);
+  const t=day.items.find(x=>x.id===id&&shown(x));
   let alsoToday=false;
-  if(inToday){
+  if(t){
     const r=await choose('停用「'+p.title+'」','明天起不再出现。今天已经排好的这条怎么办？',[
       {label:'今天也去掉',value:'both',primary:true},
-      {label:'今天保留',value:'future'},
-      {label:'算了',value:'cancel'}
-    ]);
+      {label:'今天保留',value:'future'},{label:'算了',value:'cancel'}]);
     if(r==='cancel')return;
     alsoToday=r==='both';
   }
-  p.active=false;savePlan();
-  if(alsoToday)day.items=day.items.filter(x=>x.id!==id);
+  p.active=false;stamp(p,'active');savePlan();
+  if(alsoToday&&t){t.removed=true;stamp(t,'removed')}
   save();toast('已停用，明天起不再出现');
 }
 function startItem(id){
   const p=planItem(id);if(!p)return;
   p.active=true;
-  if(p.to&&p.to<curKey)p.to='';           // 已过期的结束日期一并清掉，否则启用了也不出现
+  if(p.to&&p.to<curKey)p.to='';
   if(p.from&&p.from>curKey)p.from='';
-  savePlan();
-  if(!day.items.some(x=>x.id===id)){
-    day.items.push({id:p.id,section:p.section,time:p.time,type:p.type,title:p.title,
-      desc:p.desc,kind:p.kind,ref:p.ref,confirm:p.confirm,done:false,skipped:false,values:{}});
-  }
+  stamp(p,'active','from','to');savePlan();
+  const t=day.items.find(x=>x.id===id);
+  if(t){t.removed=false;stamp(t,'removed')}
+  else day.items.push(stampAll({id:p.id,section:p.section,time:p.time,type:p.type,title:p.title,
+    desc:p.desc,kind:p.kind,ref:p.ref,confirm:p.confirm,done:false,skipped:false,removed:false,values:{}}));
   save();toast('已启用，今天也补回来了');
 }
 function purgeItem(id){
-  plan.items=plan.items.filter(x=>x.id!==id);savePlan();
-  day.items=day.items.filter(x=>x.id!==id);save();toast('已彻底删除');
+  const p=planItem(id);if(p){p.deleted=true;stamp(p,'deleted');savePlan()}
+  const t=day.items.find(x=>x.id===id);if(t){t.removed=true;stamp(t,'removed')}
+  save();toast('已彻底删除');
 }
-function toggleEdit(el,p,where){
+function toggleEdit(el,p){
   const box=el.querySelector('[data-editbox]');
-  if(box.innerHTML){box.innerHTML='';return}
-  box.innerHTML=editForm(p,where);
+  box.innerHTML=box.innerHTML?'':editForm(p);
 }
-
+async function handle(a,id,btn,el){
+  const p=planItem(id);
+  if(a==='save-edit'){if(applyEdit(id,readEdit(btn.closest('.edit')))){save();toast('已保存，以后每天都按新的来')}}
+  else if(a==='stop')await stopItem(id);
+  else if(a==='start')startItem(id);
+  else if(a==='purge'){if(confirm('彻底删除这条？以后都不会再出现。'))purgeItem(id)}
+}
 document.getElementById('sections').addEventListener('click',async e=>{
   const btn=e.target.closest('button');if(!btn)return;
   const el=btn.closest('.item'),id=el.dataset.id;
   const item=day.items.find(x=>x.id===id);if(!item)return;
   const a=btn.dataset.action;
-  if(a==='done'){item.done=!item.done;if(item.done)item.skipped=false;save()}
-  else if(a==='skip'){item.skipped=!item.skipped;if(item.skipped)item.done=false;save()}
-  else if(a==='drop-today'){if(confirm('从今天的清单移除这条？'))
-    {day.items=day.items.filter(x=>x.id!==id);save()}}
-  else if(a==='toggle-edit'){const p=planItem(id);if(p)toggleEdit(el,p,'today')}
-  else if(a==='save-edit'){if(applyEdit(id,readEdit(btn.closest('.edit')))){save();toast('已保存，以后每天都按新的来')}}
-  else if(a==='stop'){await stopItem(id)}
-  else if(a==='start'){startItem(id)}
-  else if(a==='purge'){if(confirm('彻底删除这条？以后都不会再出现。'))purgeItem(id)}
+  if(a==='done'){item.done=!item.done;if(item.done)item.skipped=false;stamp(item,'done','skipped');save()}
+  else if(a==='skip'){item.skipped=!item.skipped;if(item.skipped)item.done=false;stamp(item,'done','skipped');save()}
+  else if(a==='drop-today'){if(confirm('从今天的清单移除这条？')){item.removed=true;stamp(item,'removed');save()}}
+  else if(a==='toggle-edit'){const p=planItem(id);if(p)toggleEdit(el,p)}
+  else await handle(a,id,btn,el);
 });
 document.getElementById('planList').addEventListener('click',async e=>{
   const btn=e.target.closest('button');if(!btn)return;
-  const el=btn.closest('.item'),id=el.dataset.planId;
-  const p=planItem(id);if(!p)return;
+  const el=btn.closest('.item'),id=el.dataset.planId,p=planItem(id);if(!p)return;
   const a=btn.dataset.action;
-  if(a==='toggle-edit-plan'){toggleEdit(el,p,'plan')}
-  else if(a==='save-edit'){if(applyEdit(id,readEdit(btn.closest('.edit')))){save();toast('已保存')}}
-  else if(a==='stop'){await stopItem(id)}
-  else if(a==='start'){startItem(id)}
-  else if(a==='purge'){if(confirm('彻底删除这条？以后都不会再出现。'))purgeItem(id)}
+  if(a==='toggle-edit-plan')toggleEdit(el,p);
+  else await handle(a,id,btn,el);
 });
 document.getElementById('sections').addEventListener('change',e=>{
   const input=e.target;if(!input.dataset.v)return;
   const el=input.closest('.item'),item=day.items.find(x=>x.id===el.dataset.id);if(!item)return;
-  item.values[input.dataset.v]=input.value;
+  item.values[input.dataset.v]=input.value;stamp(item,'values.'+input.dataset.v);
   if(input.dataset.v==='mealTime'){
     const names={早餐:'早餐后 2 小时血糖',午餐:'午餐后 2 小时血糖',晚餐:'晚餐后 2 小时血糖'};
     const target=day.items.find(x=>x.title===names[item.title]);
     if(target&&input.value){
       let [h,m]=input.value.split(':').map(Number);h=(h+2)%24;
-      target.time=pad(h)+':'+pad(m);
+      target.time=pad(h)+':'+pad(m);stamp(target,'time');
       toast(`已把「${target.title}」调到 ${target.time}（只改今天）`);
     }
   }
   save();
 });
-
 document.querySelectorAll('.tabs button[data-view]').forEach(b=>b.onclick=()=>{
   document.querySelectorAll('.tabs button[data-view]').forEach(x=>x.classList.toggle('active',x===b));
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.id===b.dataset.view));
@@ -570,7 +675,7 @@ document.getElementById('resetBtn').onclick=()=>{
   }
 };
 document.getElementById('restoreBtn').onclick=()=>{
-  if(!confirm('把长期方案恢复成出厂清单？你加过的、改过的、停用的都会丢失，往日记录不受影响。'))return;
+  if(!confirm('把长期方案恢复成出厂清单？你加过的、改过的、停用的都会丢失。'))return;
   plan=factoryPlan();savePlan();
   day={items:instantiate(curKey),createdAt:new Date().toISOString(),notified:[]};save();
   toast('已恢复出厂清单');
@@ -578,38 +683,50 @@ document.getElementById('restoreBtn').onclick=()=>{
 
 /* ============ 添加事项 ============ */
 const addModal=document.getElementById('addModal');
-function openAdd(){
-  document.getElementById('newTitle').value='';
-  document.getElementById('newDesc').value='';
-  document.getElementById('newFrom').value='';
-  document.getElementById('newTo').value='';
-  document.getElementById('newOnce').checked=false;
-  addModal.classList.add('show');
-}
+function openAdd(){['newTitle','newDesc','newFrom','newTo'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('newOnce').checked=false;addModal.classList.add('show')}
 document.getElementById('addBtn').onclick=openAdd;
 document.getElementById('addBtn2').onclick=openAdd;
 document.getElementById('cancelNew').onclick=()=>addModal.classList.remove('show');
 document.getElementById('saveNew').onclick=()=>{
   const title=document.getElementById('newTitle').value.trim();
   if(!title){toast('请填写事项名称');return}
-  const o={
-    id:'custom-'+Date.now(),
+  const o=stampAll({id:'custom-'+Date.now()+'-'+Math.random().toString(36).slice(2,6),
     section:document.getElementById('newSection').value,
     time:document.getElementById('newTime').value,
     type:document.getElementById('newType').value,
     title,desc:document.getElementById('newDesc').value.trim(),
     kind:document.getElementById('newKind').value,ref:'',confirm:false,
-    active:true,from:document.getElementById('newFrom').value,to:document.getElementById('newTo').value
-  };
+    active:true,deleted:false,
+    from:document.getElementById('newFrom').value,to:document.getElementById('newTo').value});
   const once=document.getElementById('newOnce').checked;
   if(!once){plan.items.push(o);savePlan()}
-  if(once||liveOn(o,curKey)){
-    day.items.push({id:o.id,section:o.section,time:o.time,type:o.type,title:o.title,
-      desc:o.desc,kind:o.kind,ref:'',confirm:false,done:false,skipped:false,values:{}});
-  }
+  if(once||liveOn(o,curKey))day.items.push(stampAll({id:o.id,section:o.section,time:o.time,
+    type:o.type,title:o.title,desc:o.desc,kind:o.kind,ref:'',confirm:false,
+    done:false,skipped:false,removed:false,values:{}}));
   addModal.classList.remove('show');save();
   toast(once?'已加到今天':'已加进长期方案');
 };
+
+/* ============ 同步设置 ============ */
+const syncModal=document.getElementById('syncModal');
+document.getElementById('syncLine').onclick=()=>{
+  document.getElementById('syncUrl').value=sync.url;
+  document.getElementById('syncKey').value=sync.key;
+  document.getElementById('syncOn').checked=sync.on;
+  document.getElementById('syncInfo').textContent=
+    sync.on?('服务端版本 '+sync.rev+(syncAt?(' · 最近同步 '+syncAt):'')):'口令存在这台手机上，两部手机要填一样的。';
+  syncModal.classList.add('show');
+};
+document.getElementById('syncClose').onclick=()=>syncModal.classList.remove('show');
+document.getElementById('syncSave').onclick=async()=>{
+  sync.url=document.getElementById('syncUrl').value.trim();
+  sync.key=document.getElementById('syncKey').value;
+  sync.on=document.getElementById('syncOn').checked&&!!sync.url&&!!sync.key;
+  saveSyncCfg();syncModal.classList.remove('show');
+  if(sync.on){await pull();await push();toast('同步已开启')}else{setSync('off');toast('同步已关闭')}
+};
+document.getElementById('syncNow').onclick=async()=>{await pull();await push()};
 
 /* ============ 提醒 ============ */
 document.getElementById('notifyBtn').onclick=async()=>{
@@ -627,7 +744,7 @@ function tick(){
   const k=dateKey();
   if(k!==curKey){curKey=k;day=ensureDay();saveAll();render();return}
   const hhmm=nowHHMM();let changed=false;
-  day.items.forEach(it=>{
+  visible().forEach(it=>{
     if(it.done||it.skipped)return;
     if(it.time===hhmm&&!day.notified.includes(it.id)){day.notified.push(it.id);changed=true;fire(it)}
   });
@@ -635,8 +752,9 @@ function tick(){
   refreshStatus();
 }
 setInterval(tick,20000);
+setInterval(()=>{if(sync.on&&!document.hidden)pull()},30000);
 
-/* ============ 导出日历 ============ */
+/* ============ 导出 ============ */
 function icsEscape(s){return String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n')}
 function fold(line){
   const enc=new TextEncoder();let out='',cur='',bytes=0;
@@ -648,16 +766,15 @@ const plainDate=s=>s.replace(/-/g,'');
 document.getElementById('icsBtn').onclick=()=>{
   const today=plainDate(curKey);
   const far=new Date();far.setDate(far.getDate()+60);const farKey=plainDate(dateKey(far));
-  const stamp=new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
+  const stampTxt=new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
   const L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//住院一日清单//ZH','CALSCALE:GREGORIAN',
     'METHOD:PUBLISH','X-WR-CALNAME:住院一日清单','X-WR-TIMEZONE:Asia/Shanghai'];
-  plan.items.filter(p=>p.active&&(!p.to||p.to>=curKey)).sort((a,b)=>a.time.localeCompare(b.time)).forEach(p=>{
+  plan.items.filter(p=>alive(p)&&p.active&&(!p.to||p.to>=curKey)).sort((a,b)=>a.time.localeCompare(b.time)).forEach(p=>{
     const [h,m]=p.time.split(':');
     const start=p.from&&p.from>curKey?plainDate(p.from):today;
     const until=p.to?plainDate(p.to):farKey;
-    L.push('BEGIN:VEVENT',`UID:${p.id}-${start}@hospital-checklist`,`DTSTAMP:${stamp}`,
-      `DTSTART:${start}T${h}${m}00`,'DURATION:PT10M',
-      `RRULE:FREQ=DAILY;UNTIL=${until}T235959`,
+    L.push('BEGIN:VEVENT',`UID:${p.id}-${start}@hospital-checklist`,`DTSTAMP:${stampTxt}`,
+      `DTSTART:${start}T${h}${m}00`,'DURATION:PT10M',`RRULE:FREQ=DAILY;UNTIL=${until}T235959`,
       fold(`SUMMARY:${icsEscape(p.type+' · '+p.title)}`));
     if(p.desc)L.push(fold(`DESCRIPTION:${icsEscape(p.desc)}`));
     L.push('BEGIN:VALARM','TRIGGER:PT0S','ACTION:DISPLAY',fold(`DESCRIPTION:${icsEscape(p.title)}`),'END:VALARM','END:VEVENT');
@@ -667,7 +784,7 @@ document.getElementById('icsBtn').onclick=()=>{
   toast('已生成日历文件，用手机日历打开导入');
 };
 document.getElementById('exportBtn').onclick=()=>{
-  download(new Blob([JSON.stringify({plan,days:all},null,2)],{type:'application/json'}),'住院一日清单记录-'+curKey+'.json');
+  download(new Blob([JSON.stringify(snapshot(),null,2)],{type:'application/json'}),'住院一日清单记录-'+curKey+'.json');
 };
 function download(blob,name){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
@@ -676,7 +793,7 @@ function download(blob,name){
 
 /* ============ 图表 ============ */
 function series(kinds,key){
-  return day.items.filter(x=>kinds.includes(x.kind)&&x.values[key]!==''&&x.values[key]!=null)
+  return visible().filter(x=>kinds.includes(x.kind)&&x.values[key]!==''&&x.values[key]!=null)
     .sort((a,b)=>a.time.localeCompare(b.time)).map(x=>({t:x.time,v:+x.values[key]})).filter(x=>!isNaN(x.v));
 }
 function draw(svgId,data,min,max,ref1,ref2){
@@ -700,13 +817,14 @@ function renderHistory(){
   const box=document.getElementById('historyList');
   const keys=Object.keys(all).sort().reverse();
   box.innerHTML=keys.map(k=>{
-    const d=all[k],total=d.items?.length||0,done=d.items?.filter(x=>x.done).length||0;
-    return `<div class="history-day"><strong>${esc(k)}</strong><div class="desc">${done}/${total} 已完成</div></div>`;
-  }).join('')||'还没有往日记录。每天的打勾和测量值会自动留在这台手机上。';
+    const d=all[k],items=(d.items||[]).filter(shown);
+    return `<div class="history-day"><strong>${esc(k)}</strong><div class="desc">${items.filter(x=>x.done).length}/${items.length} 已完成</div></div>`;
+  }).join('')||'还没有往日记录。';
 }
 
-render();tick();
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick()});
+render();tick();paintSync();
+if(sync.on)pull();
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){tick();if(sync.on)pull()}});
 </script>
 </body>
 </html>
