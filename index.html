@@ -2,7 +2,7 @@
 <html lang="zh-CN"><head>
 
 <meta name="description" content="每日事项、测量记录与日报打印">
-<meta name="care-release" content="0913-entry-ui">
+<meta name="care-release" content="0913-today-feedback">
 <meta name="care-app" content="dc-9f2a">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" id="vp">
@@ -122,7 +122,7 @@
 @media (prefers-reduced-motion: reduce){ .swipe-fg{will-change:auto} }
 
 </style>
-<title>住院一日清单</title>
+<title>每日清单</title>
 <style>
 :root{
   --paper:#EFF2F0;
@@ -212,10 +212,6 @@ body{
 .masthead{
   padding:18px 0 14px;
   display:flex;align-items:flex-start;justify-content:space-between;gap:16px;
-}
-.dept{
-  font-size:11px;letter-spacing:.16em;text-transform:none;
-  color:var(--ink-3);font-weight:600;
 }
 h1{
   margin:2px 0 3px;font-size:26px;line-height:1.15;font-weight:800;
@@ -509,17 +505,17 @@ body.export-open > :not(#exportView){display:none!important}
 body{font-size:15px;padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 .wrap{max-width:760px;padding:0 18px}
 .masthead{padding:24px 0 20px;align-items:center;gap:12px}
-.dept{font-size:10px;letter-spacing:.12em;color:var(--accent);margin-bottom:7px}
 h1{font-size:25px;letter-spacing:-.04em;font-weight:750;line-height:1.3;margin:0 0 5px}
-.datestr{font-size:12px;letter-spacing:0;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.datestr{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:10px 0 0;font-size:16px;font-weight:600;line-height:1.5;letter-spacing:0;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.date-week{padding:3px 8px;border-radius:8px;font-size:11px;font-weight:500;white-space:nowrap;color:var(--accent);background:var(--accent-soft)}
 .ring svg{width:58px;height:58px}.ring .rnum{font-weight:750}.ring .rsub{fill:var(--ink-2)}
-.nowbar{position:relative;top:auto;margin:0 0 6px;padding:16px;border:1px solid var(--line);border-radius:20px;background:var(--surface);box-shadow:var(--shadow)}
+.nowbar{position:sticky;top:0;z-index:30;margin:0 0 6px;padding:14px 16px;border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:0 6px 16px #20375A0D}
 .nowbar.is-due{background:var(--surface);border-color:var(--line);border-left:4px solid var(--due)}
 .nowbar.is-now{border-left:4px solid var(--accent)}
 .nowbar .eyebrow{font-size:11px;letter-spacing:.06em}.nowbar .dot{width:6px;height:6px;animation:none}
-.nowbar h2{font-size:20px;line-height:1.4;margin:6px 0;overflow-wrap:anywhere}
+.nowbar h2{font-size:19px;line-height:1.4;margin:4px 0;overflow-wrap:anywhere}
 .nowbar .meta{font-size:12px;line-height:1.65}.nowbar .meta b{font-weight:650}
-.nowbar-row{gap:12px}.nowbar-hint{font-size:11px;color:var(--ink-3);margin-top:8px}
+.nowbar-row{gap:12px}.nowbar-hint{font-size:10px;color:var(--ink-3);margin-top:5px}
 .btn,.toolbar .btn,.history-picker button,.sync-status .btn{min-height:44px;font-size:13px;padding:10px 13px;border-radius:12px;box-shadow:none;font-weight:600}
 .btn-primary,.toolbar .btn-primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .toolbar .btn:active,.tabs button:active,.history-picker button:active{transform:none;box-shadow:none}
@@ -593,11 +589,22 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
  #timeline .row{padding-bottom:8px;gap:7px}
  #timeline .card{padding:10px 12px;border-radius:15px}
  #timeline .cardhead{display:block}
- #timeline .ttl{padding-right:44px;font-size:15px;line-height:1.45;min-height:36px}
+ #timeline .ttl{padding-right:50px;font-size:15px;line-height:1.45;min-height:44px}
  #timeline .item-title{display:inline;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;line-height:inherit;cursor:pointer;overflow-wrap:anywhere}
  .item-title:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:3px}
  .detail-chevron{color:var(--ink-3);font-weight:400;white-space:nowrap}
- #timeline .tick{position:absolute;right:10px;top:10px;width:36px;height:36px;font-size:18px}
+ #timeline .tick{position:absolute;right:10px;top:10px;width:44px;height:44px;border:2px solid color-mix(in srgb,var(--accent) 50%,var(--line));border-radius:14px;background:var(--accent-soft);box-shadow:0 2px 4px #20375A0A;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:transform .12s ease,background .16s,border-color .16s,box-shadow .16s}
+ #timeline .tick svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+ #timeline .row.done .tick{background:var(--done);border-color:var(--done);color:var(--on-done);box-shadow:0 2px 6px color-mix(in srgb,var(--done) 25%,transparent)}
+ #timeline .tick:not(:disabled):active{transform:scale(.88);box-shadow:0 0 0 5px var(--accent-soft)}
+ #timeline .row.done .tick:active{box-shadow:0 0 0 5px var(--done-soft)}
+ #timeline .tick:disabled{background:var(--surface-2);border-color:var(--line-2);border-style:dashed;box-shadow:none;cursor:default}
+ @media(prefers-reduced-motion:no-preference){
+  #timeline .tick-feedback{animation:tick-pop .3s ease-out}
+  #timeline .row.done .tick-feedback svg path{stroke-dasharray:24;animation:tick-draw .24s ease-out}
+  @keyframes tick-pop{0%{transform:scale(.88)}55%{transform:scale(1.1)}100%{transform:scale(1)}}
+  @keyframes tick-draw{from{stroke-dashoffset:24}to{stroke-dashoffset:0}}
+ }
  #timeline .sub{font-size:12px;line-height:1.55;margin-top:2px}
  #timeline .sub:empty{display:none}
  #timeline .vrow{gap:6px;margin-top:7px}
@@ -614,6 +621,7 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
  .item-detail-meta{font-size:12px;color:var(--ink-3);margin-bottom:14px}
  .item-detail-copy{font-size:14px;line-height:1.8;margin:10px 0;overflow-wrap:anywhere}
  .item-detail-heading{font-size:14px;margin:18px 0 6px;color:var(--ink)}
+ .dlg-f .dlg-delete{margin-right:auto;background:var(--due-soft);border-color:transparent;color:var(--due)}
  @media(max-width:360px){#timeline .card{padding:9px}#timeline .ttl{font-size:14px}#timeline .tick{right:8px;top:9px}}
 }
 </style>
@@ -642,6 +650,7 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
  #timeline .timechip{font-size:17px;font-weight:750;letter-spacing:-.04em;line-height:1.3;min-height:40px;padding:7px 2px;border-radius:10px;background:var(--surface);border:1px solid var(--line);font-variant-numeric:tabular-nums;box-shadow:0 2px 6px #20375A04}
  #timeline .row.due .timechip,#timeline .row.late .timechip{background:var(--due-soft);border-color:transparent}
  #timeline .row.now .timechip{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+ #timeline .row.done .timechip{background:var(--done-soft);color:var(--done);border-color:color-mix(in srgb,var(--done) 22%,var(--line));box-shadow:none}
  #timeline .gutter::after{top:55px}
  #timeline .vfield{gap:4px;padding:3px 5px;background:transparent;border:0;border-radius:10px;min-height:44px;flex-wrap:wrap}
  #timeline .vfield label{font-size:11px;color:var(--ink-2)}
@@ -683,9 +692,8 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
 <div class="wrap" id="appScroll">
   <header class="masthead">
     <div>
-      <div class="dept">每日照护 · 记录与查看</div>
-      <h1>住院一日清单</h1>
-      <div class="datestr" id="dateStr"></div>
+      <h1>每日清单</h1>
+      <h2 class="datestr" id="dateStr"></h2>
     </div>
     <div class="ring" id="ringBox"></div>
   </header>
@@ -1651,7 +1659,7 @@ function render_(){
         '<div class="card"><div class="cardhead"><div class="cardbody">'+
           '<div class="ttl"><span class="kind '+(it.kcls||"")+'">'+it.kind+'</span><button type="button" class="item-title" data-item-detail="'+esc(it.id)+'" aria-haspopup="dialog">'+esc(titleOf(it))+'<span class="detail-chevron" aria-hidden="true"> ›</span></button>'+
           '</div>'+
-          '<div class="sub">'+ subOf(it) + (it.custom ? (subOf(it).trim()? ' · ':'') + '<button class="btn btn-ghost" style="padding:1px 7px;font-size:11.5px" data-delitem="'+it.id+'">删除</button>' : '') +'</div>'+
+          '<div class="sub">'+ subOf(it) +'</div>'+
           ((it.paused || it.askPause) ?
             '<div class="pausebar">'+
               '<button data-pause="'+it.id+'" data-v="1" class="'+(paused?"on":"")+'">今天停用</button>'+
@@ -1672,7 +1680,7 @@ function render_(){
               : (paused ? "" : '<button class="lnk" data-skip="'+it.id+'" data-v="1">今天跳过</button>'))+
           '</div></div>' +
         '</div>'+
-        '<button class="tick" data-tick="'+it.id+'"'+(off?' disabled aria-disabled="true"':'')+' aria-pressed="'+(r.done?"true":"false")+'" aria-label="标记完成：'+esc(titleOf(it))+'">✓</button>'+
+        '<button type="button" class="tick" data-tick="'+it.id+'"'+(off?' disabled aria-disabled="true"':'')+' aria-pressed="'+(r.done?"true":"false")+'" aria-label="'+(r.done?'取消完成：':'标记完成：')+esc(titleOf(it))+'"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m5 12 4 4L19 6"/></svg></button>'+
         '</div></div></div>';
     }
   }
@@ -1835,6 +1843,7 @@ function dlgOpen(opts){
           (isChoice?'<div class="dlg-choices">'+opts.choices.map((label,i)=>'<button type="button" data-choice="'+i+'">'+esc(label)+'</button>').join('')+'</div>':'')+
         '</div>'+
         '<div class="dlg-f">'+
+          (opts.type==='info'&&opts.deleteItem?'<button type="button" class="dlg-delete" data-a="delete">删除事项</button>':'')+
           (opts.type==='info'?'':'<button data-a="0">'+esc(opts.cancel||"取消")+'</button>')+
           (isChoice?'':'<button class="'+(opts.danger?"dan":"pri")+'" data-a="1">'+esc(opts.ok||"确定")+'</button>')+
         '</div>'+
@@ -1871,10 +1880,14 @@ function dlgOpen(opts){
       const choice=e.target.closest("[data-choice]");if(isChoice&&choice){const value=opts.choices[Number(choice.dataset.choice)];if(value!==undefined)done(value);return;}
       const b=e.target.closest("[data-a]"); if(!b) return;
       if(b.dataset.a==="0") return done(null);
+      if(b.dataset.a==='delete'&&opts.type==='info'&&opts.deleteItem)return done('delete');
       done(isInput ? (inp ? inp.value : "") : true);
     });
     mask.addEventListener("keydown", e=>{
-      if(opts.type==='info'&&e.key==='Tab'){e.preventDefault();mask.querySelector('[data-a="1"]').focus();}
+      if(opts.type==='info'&&e.key==='Tab'){
+        const buttons=[...mask.querySelectorAll('.dlg-f button')],i=buttons.indexOf(document.activeElement);
+        e.preventDefault();buttons[(i+(e.shiftKey?-1:1)+buttons.length)%buttons.length]?.focus();
+      }
       if(e.key==="Escape") done(null);
       if(e.key==="Enter" && isInput) done(inp.value);
     });
@@ -1883,7 +1896,7 @@ function dlgOpen(opts){
 const askConfirm = (title, body, opts)=> dlgOpen(Object.assign({type:"confirm",title,body:body||""}, opts||{}));
 const askText = (title, body, value, numeric, tools)=> dlgOpen({type:"input",title,body:body||"",value:value==null?"":String(value),numeric:!!numeric,tools:!!tools});
 
-function showItemDetail(id){
+async function showItemDetail(id){
   if(!sessionOpen||document.querySelector('.dlg-mask'))return;
   const it=itemById(id);if(!it)return;
   const r=state.items[id]||{};
@@ -1895,15 +1908,29 @@ function showItemDetail(id){
   if(it.note)body+='<h3 class="item-detail-heading">注意事项</h3><div class="item-detail-copy">'+(it.custom?esc(it.note):it.note)+'</div>';
   const ref=it.m==='temp'?REF.temp.txt:it.refTxt;
   if(ref)body+='<p class="item-detail-copy">参考：'+esc(ref)+'</p>';
-  return dlgOpen({type:'info',title:titleOf(it),body,ok:'关闭'});
+  const action=await dlgOpen({type:'info',title:titleOf(it),body,ok:'关闭',deleteItem:!!it.custom});
+  if(action==='delete'&&it.custom)await deleteCustomItem(id);
+}
+
+async function deleteCustomItem(id){
+  const it=itemById(id);if(!sessionOpen||!it?.custom)return;
+  const date=state.date;
+  const ok=await askConfirm('删除这个事项？','「'+esc(titleOf(it))+'」会从清单里移除，已填的记录也一并清掉。',{ok:'删除',danger:true});
+  if(!ok||!sessionOpen||state.date!==date||!itemById(id)?.custom)return;
+  state.config.custom=(state.config.custom||[]).filter(c=>c.id!==id);
+  delete state.items[id];delete state.config.times[id];
+  saveConfig();saveDay();render();setStatus('已删除。');
 }
 
 /* ============ 交互 ============ */
 function toggle(id){
+  const restoreFocus=document.activeElement?.dataset?.tick===id;
   const r = rec(id);
   if(r.done){ r.done=false; delete r.at; }
   else { const it=itemById(id);r.time=timeOf(it); r.done=true; r.at=r.time; }
   saveDay("status"); render();
+  const tick=document.querySelector('[data-tick="'+id+'"]');
+  if(tick){tick.classList.add('tick-feedback');if(restoreFocus)tick.focus({preventScroll:true});}
 }
 
 document.addEventListener("click", (e)=>{
@@ -1928,18 +1955,6 @@ document.addEventListener("click", (e)=>{
   }
   const sk = e.target.closest("[data-skip]");
   if(sk){ setSkip(sk.dataset.skip, sk.dataset.v === "1"); return; }
-  const dl = e.target.closest("[data-delitem]");
-  if(dl){
-    const id = dl.dataset.delitem;
-    const it = itemById(id);
-    askConfirm("删除这个事项？", "「"+esc(it? it.title : id)+"」会从清单里移除，已填的记录也一并清掉。", {ok:"删除", danger:true}).then(ok=>{
-      if(!ok) return;
-      state.config.custom = (state.config.custom||[]).filter(c=>c.id!==id);
-      delete state.items[id]; delete state.config.times[id];
-      saveConfig(); saveDay(); render(); setStatus("已删除。");
-    });
-    return;
-  }
   const pz = e.target.closest("[data-pause]");
   if(pz){ setPause(pz.dataset.pause, pz.dataset.v === "1"); return; }
   const tc = e.target.closest("[data-time]");
@@ -2019,7 +2034,7 @@ document.addEventListener("click", (e)=>{
   document.addEventListener('visibilitychange',()=>{if(document.hidden)cancel();});
 })();
 
-window.__build = "0913-entry-ui";
+window.__build = "0913-today-feedback";
 
 function editTime(chip){
   const id = chip.dataset.time;
@@ -2096,8 +2111,10 @@ function scrollPageTop(){
 }
 function scrollCareToRow(row){
   const scroller=document.getElementById('appScroll');
-  const top=scroller.scrollTop+row.getBoundingClientRect().top-scroller.getBoundingClientRect().top-
-    Math.max(16,(scroller.clientHeight-row.getBoundingClientRect().height)/2);
+  const bar=document.getElementById('nowBar'),rect=row.getBoundingClientRect();
+  const inset=bar&&!bar.hidden?bar.getBoundingClientRect().height+12:0;
+  const offset=inset+Math.max(16,(scroller.clientHeight-inset-rect.height)/2);
+  const top=scroller.scrollTop+rect.top-scroller.getBoundingClientRect().top-offset;
   scrollCareTo(Math.max(0,top),window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'instant':'smooth');
 }
 document.getElementById('btnBackTop').addEventListener('click',scrollPageTop);
@@ -2780,7 +2797,7 @@ $("#btnReset").addEventListener("click", async ()=>{
 /* ============ 启动 ============ */
 function stamp(){
   const d=new Date();
-  $("#dateStr").textContent = d.getFullYear()+" 年 "+(d.getMonth()+1)+" 月 "+d.getDate()+" 日 · "+WEEK[d.getDay()];
+  $("#dateStr").innerHTML = '<span>'+d.getFullYear()+'年'+(d.getMonth()+1)+'月'+d.getDate()+'日</span><span class="date-week">'+WEEK[d.getDay()]+'</span>';
 }
 function rolloverDay(){
   const k=todayKey();if(k===state.date)return false;
@@ -3180,7 +3197,6 @@ document.addEventListener('click', async (e)=>{
 
 
 </body></html>
-
 
 
 
