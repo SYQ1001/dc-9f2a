@@ -623,6 +623,7 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
 #timeline .skip-actions{margin-left:auto;flex:none;display:flex;align-items:center;gap:5px}
 #timeline .row.late .state-tags::after,#timeline .row.due .state-tags::after{content:"逾期";font-size:10px;font-weight:600;color:var(--due);background:var(--due-soft);border-radius:6px;padding:2px 6px;line-height:1.5}
 </style>
+<style>#tplBody .tpl-row{flex-wrap:wrap}#tplBody .tpl-main{flex:1 1 130px}</style>
 </head>
 <body>
 <section id="loginView" class="wrap" style="max-width:440px;padding-top:12vh" aria-labelledby="loginTitle">
@@ -683,7 +684,7 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
         <button class="btn" id="btnReset">重置今天</button>
         <button class="btn" id="btnOpenMeds" aria-controls="viewMeds">用药说明</button>
       </div>
-    <p class="buildmark" style="margin:18px 0 0;text-align:center;font-size:11px;color:var(--ink-3,#98A2B3)">版本 0913-simple</p></section>
+    <p class="buildmark" style="margin:18px 0 0;text-align:center;font-size:11px;color:var(--ink-3,#98A2B3)">版本 0913-standard</p></section>
 
     <section id="viewTrend" role="tabpanel" aria-labelledby="tabTrend" hidden="">
       <p class="panelnote">这里按时间线看血糖、体温、血压、血氧的变化。数据来自家人共享记录；也可以导入以前导出的汇总文件一起看。</p>
@@ -964,7 +965,33 @@ function configWire(config){
   c.templatesById=Object.fromEntries((c.templates||[]).map(t=>{const o=clone(t);o.offById=Object.fromEntries((o.off||[]).map(id=>[id,true]));delete o.off;return [o.id,o];}));delete c.templates;
   c.customById=Object.fromEntries((c.custom||[]).map(x=>[x.id,x]));delete c.custom;return c;
 }
-function configFromWire(c){const templates=c.templatesById?Object.values(c.templatesById).map(t=>({...t,off:Object.keys(t.offById||{}).filter(id=>t.offById[id])})):c.templates||[];return Object.assign(clone(defaultConfig),c,{templates,custom:Object.values(c.customById||{}),autoShift:false});}
+const STANDARD_TEMPLATE_ID='standard-base-v1';
+function standardConfig(config){
+  if((config.templates||[]).some(t=>t.id===STANDARD_TEMPLATE_ID))return config;
+  const base=id=>ITEMS.find(i=>i.id===id);
+  const extra=[
+    {id:'standard-wake-oxygen',title:'起床血氧',m:'spo2',t:base('bgfast').t,refTxt:base('oxygen').refTxt,sub:base('oxygen').sub},
+    {id:'standard-wake-bp',title:'起床血压',m:'bp',t:base('bgfast').t,refTxt:base('bp').refTxt,sub:base('bp').sub},
+    {id:'standard-evening-bp',title:'晚饭后血压',m:'bp',t:base('temp3').t,refTxt:base('bp').refTxt,sub:base('bp').sub},
+    {id:'standard-evening-oxygen',title:'晚饭后血氧',m:'spo2',t:base('temp3').t,refTxt:base('oxygen').refTxt,sub:base('oxygen').sub}
+  ];
+  config.custom=config.custom||[];
+  for(const item of extra)if(!config.custom.some(c=>c.id===item.id))config.custom.push({...item,kind:'测量',tpl:STANDARD_TEMPLATE_ID});
+  const included=['bgfast','acar1','meal1','bg1','acar2','meal2','bg2','oxygen','bp','acar3','meal3','temp3','bg3','clopi'];
+  const times=Object.fromEntries(included.map(id=>[id,config.times?.[id]||base(id).t]));
+  for(const it of extra)times[it.id]=it.t;
+  const names={oxygen:'午餐后血氧',bp:'午餐后血压',temp3:'晚饭后体温'};
+  const standard={id:STANDARD_TEMPLATE_ID,name:'标准模版',off:ITEMS.filter(i=>!included.includes(i.id)).map(i=>i.id),t:times,names};
+  // Exclude pre-existing unassigned permanent custom items from the seed.
+  for(const c of config.custom)if(!c.date&&!extra.some(x=>x.id===c.id))standard.off.push(c.id);
+  config.templates=[standard,...(config.templates||[])];
+  return config;
+}
+function configFromWire(c){
+  const templates=c.templatesById?Object.values(c.templatesById).map(t=>({...t,off:Object.keys(t.offById||{}).filter(id=>t.offById[id])})):c.templates||[];
+  return standardConfig(Object.assign(clone(defaultConfig),c,{templates,custom:Object.values(c.customById||{}),autoShift:false}));
+}
+
 function persistQueue(){if(!ghCfg.token||!sessionOpen)return false;const ok=LS.set(SYNC_STORE_KEY,{entries:remoteMap,pending,inFlight});if(ok&&!storageReadFailed)storageWarning="";return ok;}
 function persistCache(){if(!ghCfg.token)return false;hasCloudCache=true;return LS.set(CACHE_KEY,remoteMap);}
 function effectiveMap(){
@@ -1173,7 +1200,7 @@ function conflictLabel(key){
   const id=config?p[2]:(p[2]==="items"?p[3]:p[2]);
   if(config&&p[1]==="templatesById"){
     const t=templates().find(t=>t.id===p[2]),item=ITEMS.find(i=>i.id===field)||(state.config.custom||[]).find(i=>i.id===field);
-    return '模版「'+(t?.name||'已删除模版')+'」的'+(p[3]==='t'?(itemNames()[field]||item?.title||'事项')+' 时间':p[3]==='offById'?(itemNames()[field]||item?.title||'事项')+' 移出状态':'名称');
+    return '模版「'+(t?.name||'已删除模版')+'」的'+(p[3]==='t'?(itemNames()[field]||item?.title||'事项')+' 时间':p[3]==='offById'?(t?.names?.[field]||itemNames()[field]||item?.title||'事项')+' 移出状态':p[3]==='names'?(item?.title||'事项')+' 名称':'名称');
   }
   if(config&&p[1]==='activeTpl')return '当前使用的模版';
   if(config&&p[1]==='templates')return '旧版模版列表';
@@ -1182,7 +1209,7 @@ function conflictLabel(key){
   const name=it?.title||"清单事项",label=names[config&&p[1]!=="customById"?p[1]:field]||"设置";
   return (config?"":p[1]+" · ")+name+" 的"+label;
 }
-function conflictValue(v,key){if(key==='["config","activeTpl"]')return v?(templates().find(t=>t.id===v)?.name||"已删除的模版"):"全部事项";if(v===null||v===undefined||v==="")return "未设置";if(typeof v==="boolean")return v?"是":"否";if(Array.isArray(v))return v.map(conflictValue).join("、");if(typeof v==="object")return v.name||v.title||"设置内容";return String(v);}
+function conflictValue(v,key){if(key==='["config","activeTpl"]')return v?(templates().find(t=>t.id===v)?.name||"已删除的模版"):"标准模版";if(v===null||v===undefined||v==="")return "未设置";if(typeof v==="boolean")return v?"是":"否";if(Array.isArray(v))return v.map(conflictValue).join("、");if(typeof v==="object")return v.name||v.title||"设置内容";return String(v);}
 function loginMessage(text){document.getElementById("loginStatus").textContent=text;}
 function showLogin(message=""){
   sessionOpen=false;cloudReady=false;clearTimeout(queueTimer);
@@ -1284,7 +1311,7 @@ function customInTemplate(c,id){if(!id)return true;return c.tpls?!!c.tpls[id]:!c
 function tplTimes(){ const t=activeTpl(); return (t&&t.t)||{}; }
 function itemNames(){ return state.config.names||{}; }
 function tplPatch(it){
-  const tt=tplTimes()[it.id], nm=itemNames()[it.id];
+  const tt=tplTimes()[it.id], nm=activeTpl()?.names?.[it.id]??itemNames()[it.id];
   if(tt===undefined && nm===undefined) return it;
   const o=Object.assign({},it);
   if(tt!==undefined) o.t=tt;
@@ -1313,7 +1340,13 @@ function setTplTime(itemId, hm){
   updateTemplateTime(t,itemId,hm);
   saveConfig(); renderTemplates(); render();
 }
-function renameItem(itemId, name){
+function renameItem(itemId, name, templateId){
+  if(templateId){
+    const t=templates().find(t=>t.id===templateId);if(!t)return;
+    t.names=t.names||{};
+    if(name)t.names[itemId]=name;else delete t.names[itemId];
+    saveConfig();renderTemplates();render();return;
+  }
   state.config.names=state.config.names||{};
   if(name) state.config.names[itemId]=name; else delete state.config.names[itemId];
   saveConfig(); renderTemplates(); render();
@@ -1476,9 +1509,9 @@ function statusOf(it, cur, headId){
 
 /* ============ 渲染 ============ */
 function ring(){
-  const total = ITEMS.length;
-  const done = ITEMS.filter(i=> (state.items[i.id]||{}).done ).length;
-  const R=26, C=2*Math.PI*R, off = C*(1-done/total);
+  const items=activeItems(),total=items.length;
+  const done=items.filter(i=>(state.items[i.id]||{}).done).length;
+  const R=26, C=2*Math.PI*R, off = C*(1-(total?done/total:0));
   $("#ringBox").innerHTML =
     '<svg width="66" height="66" viewBox="0 0 66 66" role="img" aria-label="今天完成 '+done+' / '+total+' 项">'+
     '<circle cx="33" cy="33" r="'+R+'" fill="none" stroke="var(--line)" stroke-width="5"/>'+
@@ -1592,7 +1625,7 @@ function tickRefresh(){
   const typing = document.activeElement && document.activeElement.matches("input");
   if(!typing){
     const headId = firstOverdue(cur);
-    for(const it of ITEMS){
+    for(const it of allItems()){
       const row = document.querySelector('[data-row="'+it.id+'"]');
       if(!row) continue;
       const st = isOff(it) ? "wait" : statusOf(it, cur, headId);
@@ -1620,7 +1653,7 @@ function renderNow(cur){
   const btn = $("#nowDone");
   if(!pending.length){
     $("#nowLabel").textContent = "今天全部完成";
-    $("#nowTitle").textContent = "🎉 " + ITEMS.length + " 项都打勾了";
+    $("#nowTitle").textContent = "🎉 " + activeItems().length + " 项都打勾了";
     updateAutomaticHtml($("#nowMeta"),"明天 07:00 自动开始新的一天");
     nowTargetId = null; btn.hidden = true; return;
   }
@@ -1665,10 +1698,10 @@ function isSkipped(it){ return !!(state.items[it.id]||{}).skip; }
    以后代码里新增事项时，各模版会自动带上，不会凭空消失。
    模版不影响往日记录 —— 那边读的是每天存下的快照。 */
 function templates(){ return state.config.templates || []; }
-function activeTplId(){ return state.config.activeTpl || ''; }
+function activeTplId(){ const id=state.config.activeTpl;return templates().some(t=>t.id===id)?id:(templates().some(t=>t.id===STANDARD_TEMPLATE_ID)?STANDARD_TEMPLATE_ID:''); }
 function activeTpl(){ return templates().find(t=>t.id===activeTplId()) || null; }
 function tplExcluded(id){ const t=activeTpl(); return !!(t && (t.off||[]).includes(id)); }
-function tplName(){ const t=activeTpl(); return t ? t.name : '全部事项'; }
+function tplName(){ const t=activeTpl(); return t ? t.name : '标准模版'; }
 
 function newTplId(){ return 'tpl'+crypto.randomUUID().replaceAll('-',''); }
 
@@ -1677,8 +1710,25 @@ function createTemplate(name, off){
   saveConfig();
   return state.config.templates[state.config.templates.length-1];
 }
+function createFromStandard(name){
+  const source=templates().find(t=>t.id===STANDARD_TEMPLATE_ID);
+  if(!source)return null;
+  const rows=tplItemRows(source);
+  const t={id:newTplId(),name,off:(source.off||[]).slice(),
+    t:Object.fromEntries(rows.map(r=>[r.id,r.t])),names:Object.fromEntries(rows.map(r=>[r.id,r.title]))};
+  // Include only the permanent items actually present in the source.
+  const included=new Set(rows.map(r=>r.id));
+  const existingIds=templates().map(x=>x.id);
+  for(const c of state.config.custom||[]){
+    if(c.date)continue;
+    if(!c.tpls)c.tpls=c.tpl?{[c.tpl]:true}:Object.fromEntries(['',...existingIds].map(id=>[id,true]));
+    if(included.has(c.id))c.tpls[t.id]=true;
+  }
+  state.config.templates=templates().concat(t);
+  saveConfig();return t;
+}
 function switchTemplate(id){
-  state.config.activeTpl = id || '';
+  state.config.activeTpl = id || STANDARD_TEMPLATE_ID;
   saveConfig(); render();
   setStatus('已切换到「'+tplName()+'」，今天的清单已按它刷新。');
 }
@@ -1906,7 +1956,7 @@ document.addEventListener("click", (e)=>{
   document.addEventListener('visibilitychange',()=>{if(document.hidden)cancel();});
 })();
 
-window.__build = "0913-simple";
+window.__build = "0913-standard";
 
 function editTime(chip){
   const id = chip.dataset.time;
@@ -2801,7 +2851,7 @@ function phaseName(ph){
   return m[ph]||ph||'其他';
 }
 function tplItemRows(t){
-  const off=t.off||[], times=t.t||{}, names=itemNames();
+  const off=t.off||[], times=t.t||{}, names={...itemNames(),...(t.names||{})};
   const pick=(id,base)=>({
     id:id,
     t:(times[id]!==undefined?times[id]:base.t),
@@ -2819,22 +2869,17 @@ function tplItemRows(t){
 }
 function renderTemplates(){
   const box=document.getElementById('tplBody'); if(!box)return;
-  const list=templates(), act=activeTplId();
+  const list=templates().slice().sort((a,b)=>(b.id===STANDARD_TEMPLATE_ID)-(a.id===STANDARD_TEMPLATE_ID)), act=activeTplId();
   let html='<div class="tpl-cur">当前生效：<b>'+esc(tplName())+'</b>'+
     '<span class="tpl-count">今天 '+activeItems().length+' 项</span></div>';
-
-  html+='<div class="tpl-row'+(act===''?' on':'')+'">'+
-    '<div class="tpl-main"><div class="tpl-name">全部事项</div>'+
-    '<div class="tpl-sub">不做筛选，清单里出现所有事项</div></div>'+
-    (act===''?'<span class="tpl-badge">使用中</span>':'<button type="button" class="tpl-use" data-tpl-use="">切换</button>')+
-    '</div>';
 
   for(const t of list){
     const on=t.id===act, rows=tplItemRows(t);
     html+='<div class="tpl-row'+(on?' on':'')+'">'+
       '<div class="tpl-main"><div class="tpl-name">'+esc(t.name)+'</div>'+
-      '<div class="tpl-sub">'+rows.length+' 项事项</div></div>'+
-      (on?'<button type="button" class="tpl-add" data-tpl-add="'+esc(t.id)+'">加事项</button><span class="tpl-badge">使用中</span>'
+      '<div class="tpl-sub">'+rows.length+' 项事项'+(t.id===STANDARD_TEMPLATE_ID?' · 新模版从这里复制':'')+'</div></div>'+
+      '<button type="button" class="tpl-add" data-tpl-add="'+esc(t.id)+'">加事项</button>'+
+      (on?'<span class="tpl-badge">使用中</span>'
          :'<button type="button" class="tpl-use" data-tpl-use="'+esc(t.id)+'">切换</button>')+
       '<button type="button" class="tpl-edit" data-tpl-edit="'+esc(t.id)+'">'+(editingTpl===t.id?'收起':'编辑')+'</button>'+
       '</div>';
@@ -2849,7 +2894,7 @@ function renderTemplates(){
           '<div class="swipe-fg">'+
             '<button type="button" class="tpl-time'+(r.unset?' unset':'')+'" data-tpl-time="'+esc(t.id)+'|'+esc(r.id)+'">'+esc(r.t)+'</button>'+
             '<span class="tpl-title">'+esc(r.title)+'</span>'+
-            '<button type="button" class="tpl-ren" data-tpl-ren="'+esc(r.id)+'" aria-label="重命名">'+
+            '<button type="button" class="tpl-ren" data-tpl-ren="'+esc(r.id)+'" data-tpl-owner="'+esc(t.id)+'" aria-label="重命名">'+
               '<svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">'+
               '<path d="M3.5 13.6V16.5H6.4L15 7.9 12.1 5 3.5 13.6Z"/><path d="M12.1 5 15 7.9"/></svg>'+
             '</button>'+
@@ -2858,12 +2903,12 @@ function renderTemplates(){
       html+='<div class="tpl-acts">'+
         (t.off||[]).map(id=>{const item=ITEMS.find(i=>i.id===id)||(state.config.custom||[]).find(i=>i.id===id);return item?'<button type="button" class="tpl-btn" data-tpl-restore="'+esc(t.id)+'|'+esc(id)+'">恢复 '+esc(itemNames()[id]||item.title)+'</button>':'';}).join('')+
         '<button type="button" class="tpl-btn" data-tpl-rename="'+esc(t.id)+'">模版改名</button>'+
-        '<button type="button" class="tpl-btn danger" data-tpl-del="'+esc(t.id)+'">删除模版</button></div>'+
+        (t.id===STANDARD_TEMPLATE_ID?'':'<button type="button" class="tpl-btn danger" data-tpl-del="'+esc(t.id)+'">删除模版</button>')+'</div>'+
         '<div class="tpl-hint">左滑一条可以把它移出本模版，事项本身还在，随时能加回来。</div>';
       html+='</div>';
     }
   }
-  html+='<button type="button" class="tpl-new" id="btnNewTpl">＋ 从当前新建一个模版</button>';
+  html+='<button type="button" class="tpl-new" id="btnNewTpl">＋ 从标准模版新建</button>';
   box.innerHTML=html;
 }
 
@@ -2953,10 +2998,13 @@ document.addEventListener('click', async (e)=>{
   const ren=e.target.closest('[data-tpl-ren]');
   if(ren){
     const id=ren.dataset.tplRen, base=ITEMS.find(i=>i.id===id)||(state.config.custom||[]).find(i=>i.id===id);
-    const cur=(itemNames()[id]!==undefined)?itemNames()[id]:(base?base.title:'');
-    const name=await askText('重命名事项','改名对所有模版生效。以往记录不受影响，仍显示当时的名字。',cur);
+    const owner=ren.dataset.tplOwner;
+    const template=templates().find(t=>t.id===owner);if(!template)return;
+    const cur=template.names?.[id]??itemNames()[id]??base?.title??'';
+    const name=await askText('重命名事项','只修改这个模版，其他模版和往日记录不受影响。',cur);
     if(name===null)return;
-    renameItem(id, name.trim()===(base?base.title:'')?'':name.trim());
+    if(!name.trim()||!sessionOpen)return;
+    renameItem(id,name.trim(),owner);
     return;
   }
 
@@ -3016,11 +3064,11 @@ document.addEventListener('click', async (e)=>{
 
   const del=e.target.closest('[data-tpl-del]');
   if(del){
-    const t=templates().find(x=>x.id===del.dataset.tplDel); if(!t)return;
-    const yes=await askConfirm('删除模版「'+t.name+'」？','以往记录不受影响。如果它正在使用，会退回「全部事项」。');
-    if(!yes)return;
+    const t=templates().find(x=>x.id===del.dataset.tplDel); if(!t||t.id===STANDARD_TEMPLATE_ID)return;
+    const yes=await askConfirm('删除模版「'+t.name+'」？','以往记录不受影响。如果它正在使用，会退回「标准模版」。');
+    if(!yes||!sessionOpen)return;
     state.config.templates=templates().filter(x=>x.id!==t.id);
-    if(activeTplId()===t.id) state.config.activeTpl='';
+    if(activeTplId()===t.id) state.config.activeTpl=STANDARD_TEMPLATE_ID;
     editingTpl=''; saveConfig(); renderTemplates(); render();
     setStatus('已删除模版。'); return;
   }
@@ -3029,21 +3077,17 @@ document.addEventListener('click', async (e)=>{
   if(nw){
     const name=await askText('新模版名称','比如「日常照护清单」「居家每日清单」。','');
     if(name===null||!name.trim())return;
-    const cur=activeTpl();
-    const t=createTemplate(name.trim(), cur?(cur.off||[]):[]);
-    if(cur&&cur.t)t.t=clone(cur.t);
-    for(const c of state.config.custom||[]){if(c.date||!customInTemplate(c,cur?.id||''))continue;
-      c.tpls=c.tpls||(c.tpl?{[c.tpl]:true}:Object.fromEntries(['',...templates().map(t=>t.id)].map(id=>[id,true])));c.tpls[t.id]=true;
-    }
-    saveConfig();
+    if(!sessionOpen)return;
+    const t=createFromStandard(name.trim());if(!t)return;
     editingTpl=t.id; renderTemplates();
-    setStatus('已新建「'+t.name+'」，从当前模版复制而来。'); return;
+    setStatus('已新建「'+t.name+'」，从标准模版复制而来，可独立增删改。'); return;
   }
 });
 </script>
 
 
 </body></html>
+
 
 
 
