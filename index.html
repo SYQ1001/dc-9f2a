@@ -2,7 +2,7 @@
 <html lang="zh-CN"><head>
 
 <meta name="description" content="每日事项、测量记录与日报打印">
-<meta name="care-release" content="0913-prompt-touch-redeploy-1">
+<meta name="care-release" content="0913-prompt-bounce-fix">
 <meta name="care-app" content="dc-9f2a">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" id="vp">
@@ -584,7 +584,7 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
  #nowBarSlot{height:150px;margin-bottom:6px;pointer-events:none}
  #nowJump{flex:1;cursor:pointer;border-radius:8px}
  #nowJump:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
- #appScroll{flex:1 1 0;min-height:0;width:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;padding-bottom:24px;scroll-padding-top:16px;isolation:isolate}
+ #appScroll{position:relative;flex:1 1 0;min-height:0;width:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:none;padding-bottom:24px;scroll-padding-top:16px;isolation:isolate}
  #appView>.tabs{position:relative;inset:auto;left:auto;bottom:auto;transform:none;flex:0 0 auto;align-self:center;margin:0;width:min(100%,760px);z-index:40}
  body.export-open{height:auto;overflow:auto;padding-bottom:0}
 }
@@ -1771,7 +1771,11 @@ function syncNowBarLayout(){
   bar.style.width=rect.width+'px';
   slot.style.height=bar.getBoundingClientRect().height+'px';
   bar.style.left=(rect.left-origin.left)+'px';
-  bar.style.transform='translateY('+Math.max(scroller.getBoundingClientRect().top-origin.top,rect.top-origin.top)+'px)';
+  // Layout offsets do not follow Safari's elastic overscroll; viewport rectangles do.
+  const scrollTop=Math.max(0,Math.min(scroller.scrollTop,Math.max(0,scroller.scrollHeight-scroller.clientHeight)));
+  const top=scroller.getBoundingClientRect().top-origin.top+Math.max(0,slot.offsetTop-scrollTop);
+  const transform='translateY('+top+'px)';
+  if(bar.style.transform!==transform)bar.style.transform=transform;
   bar.style.visibility='visible';
 }
 function scheduleNowBarLayout(){
@@ -2069,7 +2073,7 @@ document.addEventListener("click", (e)=>{
   document.addEventListener('visibilitychange',()=>{if(document.hidden)cancel();});
 })();
 
-window.__build = "0913-prompt-touch";
+window.__build = "0913-prompt-bounce-fix";
 
 function editTime(chip){
   const id = chip.dataset.time;
@@ -3278,7 +3282,6 @@ document.addEventListener('click', async (e)=>{
 
 
 </body></html>
-
 
 
 
