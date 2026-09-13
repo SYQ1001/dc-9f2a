@@ -536,6 +536,85 @@ body.export-open > :not(#exportView){display:none!important}
 .trend-empty{padding:24px 4px;font-size:16px;color:var(--ink-2)}
 .trend-footnote{margin:18px 0}
 </style>
+<style id="care-ui">
+/* Care UI: presentation only; shared records and task behavior stay in the main script. */
+@media screen {
+:root{--paper:#F3F5F9;--surface:#fff;--surface-2:#F6F8FC;--ink:#182338;--ink-2:#526078;--ink-3:#69788E;--line:#E5EAF2;--line-2:#CDD6E3;--accent:#3469DC;--accent-2:#2454B8;--accent-soft:#EAF0FF;--due:#B04435;--due-soft:#FFF1EE;--done:#268264;--done-soft:#EDF7F2;--alarm:#B04435;--shadow:0 4px 20px #20375A08;--radius:18px;--mono:var(--sans)}
+:root[data-theme="dark"]{--paper:#101622;--surface:#192231;--surface-2:#202C3D;--ink:#EDF2FC;--ink-2:#BECADF;--ink-3:#96A7C0;--line:#2A374B;--line-2:#40516B;--accent:#90B2FF;--accent-2:#B3CAFF;--accent-soft:#25395C;--due:#FFAB9A;--due-soft:#3C292B;--done:#8AD8B7;--done-soft:#203B34;--alarm:#FFAB9A;--on-accent:#132543;--on-done:#12342A;--shadow:none}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--paper:#101622;--surface:#192231;--surface-2:#202C3D;--ink:#EDF2FC;--ink-2:#BECADF;--ink-3:#96A7C0;--line:#2A374B;--line-2:#40516B;--accent:#90B2FF;--accent-2:#B3CAFF;--accent-soft:#25395C;--due:#FFAB9A;--due-soft:#3C292B;--done:#8AD8B7;--done-soft:#203B34;--alarm:#FFAB9A;--on-accent:#132543;--on-done:#12342A;--shadow:none}}
+body{font-size:15px;padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:760px;padding:0 18px}
+.masthead{padding:24px 0 20px;align-items:center;gap:12px}
+.dept{font-size:10px;letter-spacing:.12em;color:var(--accent);margin-bottom:7px}
+h1{font-size:25px;letter-spacing:-.04em;font-weight:750;line-height:1.3;margin:0 0 5px}
+.datestr{font-size:12px;letter-spacing:0;color:var(--ink-2);font-variant-numeric:tabular-nums}
+.ring svg{width:58px;height:58px}.ring .rnum{font-weight:750}.ring .rsub{fill:var(--ink-2)}
+.nowbar{position:relative;top:auto;margin:0 0 6px;padding:16px;border:1px solid var(--line);border-radius:20px;background:var(--surface);box-shadow:var(--shadow)}
+.nowbar.is-due{background:var(--surface);border-color:var(--line);border-left:4px solid var(--due)}
+.nowbar.is-now{border-left:4px solid var(--accent)}
+.nowbar .eyebrow{font-size:11px;letter-spacing:.06em}.nowbar .dot{width:6px;height:6px;animation:none}
+.nowbar h2{font-size:20px;line-height:1.4;margin:6px 0;overflow-wrap:anywhere}
+.nowbar .meta{font-size:12px;line-height:1.65}.nowbar .meta b{font-weight:650}
+.nowbar-row{gap:12px}.nowbar-hint{font-size:11px;color:var(--ink-3);margin-top:8px}
+.btn,.toolbar .btn,.history-picker button,.sync-status .btn{min-height:44px;font-size:13px;padding:10px 13px;border-radius:12px;box-shadow:none;font-weight:600}
+.btn-primary,.toolbar .btn-primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.toolbar .btn:active,.tabs button:active,.history-picker button:active{transform:none;box-shadow:none}
+#nowDone{border-radius:13px;min-width:58px}
+.sync-status{margin:0;min-height:48px;gap:8px;font:11px/1.55 var(--sans);color:var(--ink-2);flex-wrap:wrap}
+.sync-status #syncStatus{flex:1 1 140px}.sync-status .btn{min-height:44px;padding:6px 4px;border:0;background:transparent;color:var(--accent);font-size:12px;box-shadow:none}
+#status:empty{display:none}#status:not(:empty){margin:0 0 12px;font:12px/1.6 var(--sans)}
+#viewToday>.toolbar:first-child{margin:8px 0 18px;justify-content:flex-end}
+#btnAddItem{background:var(--accent-soft);color:var(--accent);border:0;padding:10px 16px}
+.tabs{bottom:0;width:min(100%,760px);padding:8px 12px calc(8px + env(safe-area-inset-bottom,0px));gap:0;background:var(--surface);border-top:1px solid var(--line);border-radius:22px 22px 0 0;box-shadow:0 -4px 24px #20375A06;pointer-events:auto;align-items:stretch}
+.page-tabs{display:grid;flex:3;grid-template-columns:repeat(3,minmax(0,1fr));gap:0}
+.tabs>.tab,.tabs>.nav-top{flex:1;min-width:0}
+.tabs button,.tabs .tab[aria-selected="true"]{min-height:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:5px 1px;border:0;border-radius:12px;box-shadow:none;background:transparent;color:var(--ink-3);font-size:11px;line-height:1.3;font-weight:600;white-space:nowrap}
+.tabs .tab[aria-selected="true"]{background:var(--accent-soft);color:var(--accent)}
+.nav-icon{display:block;width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.phase{margin:22px 0 12px;gap:12px}.phase h3{font-size:13px;letter-spacing:.08em;color:var(--ink)}.phase .cnt{font-size:12px}
+.row{grid-template-columns:46px minmax(0,1fr);gap:8px;padding-bottom:10px;scroll-margin-top:16px}
+.gutter{padding-top:10px}.gutter::after{top:45px;bottom:-10px;background:var(--line)}
+.timechip{min-height:44px;font-size:12px;padding:0;font-weight:650;font-variant-numeric:tabular-nums}
+.card{padding:14px;border:1px solid var(--line);border-radius:18px;box-shadow:none}
+.card::before{width:3px;top:18px;bottom:18px;border-radius:3px}
+.row.due .card{background:var(--surface);border-color:var(--line)}
+.row.now .card{border-color:color-mix(in srgb,var(--accent) 38%,var(--line));box-shadow:none}
+.row.done .card{background:var(--surface);border-color:var(--line)}
+.row.done .card::before{background:var(--done)}
+.cardhead{gap:8px}.ttl{font-size:16px;font-weight:650;line-height:1.5;letter-spacing:0;overflow-wrap:anywhere}
+.kind{font-size:10px;padding:2px 6px;border-radius:6px;letter-spacing:0;font-weight:600;vertical-align:2px;background:var(--accent-soft);color:var(--accent)}
+.kind.k-meal{color:var(--due);background:var(--due-soft)}.kind.k-iv{color:var(--accent);background:var(--accent-soft)}
+.linktag{background:var(--accent-soft);color:var(--accent);font-size:10px;font-weight:600;vertical-align:1px;margin-left:4px}
+.sub{font-size:12px;line-height:1.7;margin-top:5px}.linknote{font-size:11px;line-height:1.6}
+.tick{width:44px;height:44px;border-radius:50%;border:1.5px solid var(--line-2);font-size:20px;background:var(--surface-2)}
+.row.done .tick{background:var(--done-soft);border-color:transparent;color:var(--done)}
+.row.late .ttl::after{content:"逾期";font-size:10px;letter-spacing:0;font-weight:600}
+.vrow{gap:8px;margin-top:12px}.vfield{padding:7px 9px;min-height:44px;border-radius:12px;border:1px solid var(--line);max-width:100%;background:var(--surface-2)}
+.row.due .vfield{background:var(--surface-2)}.vfield label{font-size:11px;color:var(--ink-2)}.vfield input{font-size:18px;min-width:0;width:54px}.vfield input.wide{width:72px}.vfield .unit{font-size:11px}
+.vfield.out,.row.due .vfield.out{border-color:var(--due);background:var(--due-soft)}
+.refnote{font-size:11px}.remeasure{min-height:44px;margin:0;padding:6px 10px;border:0;border-radius:10px;background:var(--surface-2);font-size:12px;color:var(--accent)}
+details.more{margin-top:5px}details.more>summary{min-height:44px;font-size:12px;align-items:center}
+.skiprow{margin-top:2px}.lnk{min-height:44px;font-size:12px;text-decoration:none;color:var(--ink-3);padding:7px 0}
+.pausebar button,.tpl-use,.tpl-edit,.tpl-btn,.tpl-add,.tpl-time,.tpl-ren{min-height:44px}
+.ivbar{gap:8px}.ivmeta{line-height:1.7}.ivbadge{letter-spacing:0;border-radius:8px}
+.chartcard,#viewTrend .chartcard{border-radius:20px;padding:18px 16px;border-color:var(--line);box-shadow:none;margin:14px 0}
+#viewTrend .chartcard h4{font-size:17px}.trend-values strong{font-size:30px;letter-spacing:-.03em}.trend-values small{font-size:12px}
+.panelnote{font-size:13px;line-height:1.7}.tablewrap{border-radius:16px}table.log th{background:var(--surface-2)}
+.history-picker{padding:14px;background:var(--surface);border:1px solid var(--line);border-radius:18px}
+.history-summary{border:0;border-radius:18px;padding:18px}.history-entry{border-radius:18px;padding:16px;margin:12px 0}.history-entry h4{font-size:16px}.history-entry p{font-size:14px}
+.tpl-cur{border:0;background:var(--accent-soft);border-radius:18px;padding:16px}.tpl-row{border-color:var(--line);border-radius:16px;padding:12px;margin:10px 0;gap:6px}.tpl-row.on{border-color:var(--accent)}
+.tpl-use,.tpl-edit,.tpl-btn,.tpl-add{padding:6px 10px;border-radius:10px;font-size:12px}.tpl-items{border-color:var(--line);border-radius:0 0 16px 16px}.tpl-time{border:0;background:var(--surface-2);padding:5px 8px}.tpl-ren{width:44px}.tpl-new{border-radius:16px;min-height:48px}
+.tpl-warn{background:var(--due-soft);color:var(--due)}
+.dlg-mask{background:#101B3059;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.dlg{border:1px solid var(--line);border-radius:24px;overflow:auto;box-shadow:0 24px 80px #101B3033}.dlg-h{padding:22px 20px 8px;font-size:19px}.dlg-b{padding:0 20px 16px}.dlg-f{padding:12px 20px 20px}.dlg-f button{min-height:44px;border-radius:12px}
+.dlg-choices button,.dlg-presets button{min-height:44px;box-shadow:none}.dlg-choices button:active,.dlg-presets button:active{transform:none;box-shadow:none}.dlg-f button.pri{color:var(--on-accent)}
+#loginView{padding:32px 24px!important;margin:10vh auto 0;max-width:400px!important;border:1px solid var(--line);border-radius:24px;background:var(--surface);box-shadow:var(--shadow);width:calc(100% - 36px)}
+#loginTitle{font-size:26px}#loginView>p{color:var(--ink-2);font-size:14px;line-height:1.8;margin:18px 0 24px}#loginForm>label{font-size:12px;color:var(--ink-2);font-weight:600}#loginToken{min-height:50px}#loginForm .toolbar{margin-top:16px}#loginEnter{margin-left:auto;min-width:88px}#loginStatus{font-size:13px;line-height:1.6}
+footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surface);border:1px solid var(--line)}
+@media(min-width:700px){.masthead{padding:32px 0 24px}h1{font-size:30px}.nowbar{padding:22px}.row{grid-template-columns:62px minmax(0,1fr);gap:14px}.card{padding:18px 20px}.tabs{border-left:1px solid var(--line);border-right:1px solid var(--line)}}
+@media(max-width:360px){.wrap{padding:0 12px}.row{grid-template-columns:40px minmax(0,1fr);gap:6px}.card{padding:12px 10px}.ttl{font-size:15px}.nowbar{padding:12px}.nowbar h2{font-size:18px}.tpl-row{flex-wrap:wrap}.tpl-main{flex-basis:55%}}
+}
+</style>
 </head>
 <body>
 <section id="loginView" class="wrap" style="max-width:440px;padding-top:12vh" aria-labelledby="loginTitle">
@@ -564,7 +643,7 @@ body.export-open > :not(#exportView){display:none!important}
         <div class="eyebrow"><span class="dot"></span><span id="nowLabel">正在加载</span></div>
         <h2 id="nowTitle">正在读取记录</h2>
         <div class="meta" id="nowMeta"></div>
-        <div style="font-size:12px;color:var(--ink-3);margin-top:4px">点这条可跳到清单里对应的位置</div>
+        <div class="nowbar-hint">轻点查看对应事项 →</div>
       </div>
       <div class="nowbar-act">
         <button class="btn btn-primary" id="nowDone" disabled>完成</button>
@@ -574,11 +653,11 @@ body.export-open > :not(#exportView){display:none!important}
 
   <nav class="tabs" aria-label="页面导航">
     <div class="page-tabs" role="tablist" aria-label="切换页面">
-    <button class="tab" id="tabToday" role="tab" aria-controls="viewToday" aria-selected="true" data-view="today">今天</button>
-    <button class="tab" id="tabTrend" role="tab" aria-controls="viewTrend" aria-selected="false" tabindex="-1" data-view="trend">图表</button>
-    <button class="tab" id="tabHistory" role="tab" aria-controls="viewHistory" aria-selected="false" tabindex="-1" data-view="history">往日</button>
+    <button class="tab" id="tabToday" role="tab" aria-controls="viewToday" aria-selected="true" data-view="today"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="4"/><path d="m8 12 3 3 5-6"/></svg><span>今天</span></button>
+    <button class="tab" id="tabTrend" role="tab" aria-controls="viewTrend" aria-selected="false" tabindex="-1" data-view="trend"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v16h16M7 15l4-5 4 2 5-7"/></svg><span>图表</span></button>
+    <button class="tab" id="tabHistory" role="tab" aria-controls="viewHistory" aria-selected="false" tabindex="-1" data-view="history"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9a8 8 0 1 1 0 6M4 4v5h5M12 7v5l3 2"/></svg><span>往日</span></button>
     </div>
-    <button class="tab" id="tabTpl" role="tab" aria-controls="viewTpl" aria-selected="false" tabindex="-1" data-view="tpl">模版</button><button class="nav-top" id="btnBackTop" type="button">回到顶部</button>
+    <button class="tab" id="tabTpl" role="tab" aria-controls="viewTpl" aria-selected="false" tabindex="-1" data-view="tpl"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg><span>模版</span></button><button class="nav-top" id="btnBackTop" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14M12 21V9m-6 6 6-6 6 6"/></svg><span>回到顶部</span></button>
   </nav>
 
   <div class="status sync-status"><span id="syncStatus" role="status">正在读取记录…</span><button class="btn" id="btnSyncCfg" type="button">同步设置</button><button class="btn" id="btnSyncRetry" type="button" hidden="">重试</button></div>
@@ -2975,3 +3054,4 @@ document.addEventListener('click', async (e)=>{
 
 
 </body></html>
+
