@@ -633,6 +633,7 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
 .swipe.revealing .swipe-bg{visibility:visible}
 .swipe.revealing .swipe-fg{will-change:transform}
 </style>
+<style>.linktag.customtag{background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line);font-weight:500}</style>
 </head>
 <body>
 <section id="loginView" class="wrap" style="max-width:440px;padding-top:12vh" aria-labelledby="loginTitle">
@@ -693,7 +694,7 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
         <button class="btn" id="btnReset">重置今天</button>
         <button class="btn" id="btnOpenMeds" aria-controls="viewMeds">用药说明</button>
       </div>
-    <p class="buildmark" style="margin:18px 0 0;text-align:center;font-size:11px;color:var(--ink-3,#98A2B3)">版本 0913-template-clean</p></section>
+    <p class="buildmark" style="margin:18px 0 0;text-align:center;font-size:11px;color:var(--ink-3,#98A2B3)">版本 0913-wake-med</p></section>
 
     <section id="viewTrend" role="tabpanel" aria-labelledby="tabTrend" hidden="">
       <p class="panelnote">这里按时间线看血糖、体温、血压、血氧的变化。数据来自家人共享记录；也可以导入以前导出的汇总文件一起看。</p>
@@ -976,7 +977,7 @@ function configWire(config){
 }
 const STANDARD_TEMPLATE_ID='standard-base-v1';
 function standardConfig(config){
-  if((config.templates||[]).some(t=>t.id===STANDARD_TEMPLATE_ID))return config;
+  if((config.templates||[]).some(t=>t.id===STANDARD_TEMPLATE_ID))return addStandardWakeMedication(config);
   const base=id=>ITEMS.find(i=>i.id===id);
   const extra=[
     {id:'standard-wake-oxygen',title:'起床血氧',m:'spo2',t:base('bgfast').t,refTxt:base('oxygen').refTxt,sub:base('oxygen').sub},
@@ -994,6 +995,23 @@ function standardConfig(config){
   // Exclude pre-existing unassigned permanent custom items from the seed.
   for(const c of config.custom)if(!c.date&&!extra.some(x=>x.id===c.id))standard.off.push(c.id);
   config.templates=[standard,...(config.templates||[])];
+  return addStandardWakeMedication(config);
+}
+// Versioned, idempotent addition to the standard only; existing copies stay independent.
+function addStandardWakeMedication(config){
+  const standard=(config.templates||[]).find(t=>t.id===STANDARD_TEMPLATE_ID);
+  if(!standard||standard.wakeMedicationVersion===1)return config;
+  const id='standard-wake-medication';
+  config.custom=config.custom||[];
+  const bp=config.custom.find(c=>c.id==='standard-wake-bp');
+  const time=standard.t?.['standard-wake-bp']||bp?.t||'07:05';
+  const [h,m]=time.split(':').map(Number),next=(h*60+m+1)%1440;
+  const scheduled=String(Math.floor(next/60)).padStart(2,'0')+':'+String(next%60).padStart(2,'0');
+  if(!config.custom.some(c=>c.id===id))config.custom.push({id,t:scheduled,kind:'服药',title:'降压药',
+    sub:'根据早起血压测量情况，按医嘱决定是否服用',tpl:STANDARD_TEMPLATE_ID});
+  standard.t=standard.t||{};standard.t[id]=scheduled;
+  standard.off=(standard.off||[]).filter(x=>x!==id);
+  standard.wakeMedicationVersion=1;
   return config;
 }
 function configFromWire(c){
@@ -1613,7 +1631,7 @@ function render_(){
              (paused ? '<span class="pausetag">'+esc(it.paused||"暂停中")+'</span>' :
               (it.askPause ? '<span class="pausetag" style="background:#5b21b6">'+esc(it.askPause)+'</span>' : ""))+
              (isLinked(it) ? '<span class="linktag" title="'+esc(linkLabel(it))+'">联动</span>' : "")+
-             (it.custom ? '<span class="linktag" style="background:#5b21b6">自加</span>' : "")+
+             (it.custom ? '<span class="linktag customtag">自加</span>' : "")+
              (skipped ? '<span class="skiptag">今天跳过</span>' : '')+'</div>'+
           '<div class="skip-actions">'+
             (skipped
@@ -1968,7 +1986,7 @@ document.addEventListener("click", (e)=>{
   document.addEventListener('visibilitychange',()=>{if(document.hidden)cancel();});
 })();
 
-window.__build = "0913-template-clean";
+window.__build = "0913-wake-med";
 
 function editTime(chip){
   const id = chip.dataset.time;
@@ -3129,6 +3147,7 @@ document.addEventListener('click', async (e)=>{
 
 
 </body></html>
+
 
 
 
