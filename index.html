@@ -1918,6 +1918,40 @@ document.addEventListener("click", (e)=>{
   if(tab){ switchView(tab.dataset.view); return; }
 });
 
+/* 惯性滚动时，iOS 会把第一次触摸当成「停止滚动」吞掉，不生成 click，
+   于是要点两下才能切标签页。touchstart / touchend 是照常触发的，
+   所以在 touchend 里直接切，再把随后可能补发的 click 拦掉，避免切两次。 */
+(function(){
+  const NEAR=12, MAXMS=700;
+  let el=null, sx=0, sy=0, t0=0, doneAt=0;
+
+  document.addEventListener('touchstart',(e)=>{
+    const tab=e.target.closest('.tab');
+    if(!tab){el=null;return;}
+    const t=e.changedTouches[0];
+    el=tab; sx=t.clientX; sy=t.clientY; t0=Date.now();
+  },{passive:true});
+
+  document.addEventListener('touchend',(e)=>{
+    const tab=e.target.closest('.tab');
+    if(!el||tab!==el){el=null;return;}
+    el=null;
+    const t=e.changedTouches[0];
+    // 手指挪开了或按太久，按取消处理，保留「滑开就不触发」的习惯
+    if(Math.abs(t.clientX-sx)>NEAR||Math.abs(t.clientY-sy)>NEAR||Date.now()-t0>MAXMS)return;
+    doneAt=Date.now();
+    switchView(tab.dataset.view);
+  },{passive:true});
+
+  document.addEventListener('touchcancel',()=>{el=null;},{passive:true});
+
+  document.addEventListener('click',(e)=>{
+    if(Date.now()-doneAt<700&&e.target.closest('.tab')){
+      e.stopPropagation(); e.preventDefault();   // 已经在 touchend 切过了
+    }
+  },true);
+})();
+
 function setMealEnd(id,value){
   const it=itemById(id);if(!it?.meal)return;
   if(value&&(!/^([01]\d|2[0-3]):[0-5]\d$/.test(value)||mins(value)<mins(timeOf(it)))){
