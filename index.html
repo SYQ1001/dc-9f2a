@@ -615,6 +615,18 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
 @media(max-width:360px){.wrap{padding:0 12px}.row{grid-template-columns:40px minmax(0,1fr);gap:6px}.card{padding:12px 10px}.ttl{font-size:15px}.nowbar{padding:12px}.nowbar h2{font-size:18px}.tpl-row{flex-wrap:wrap}.tpl-main{flex-basis:55%}}
 }
 </style>
+<style id="care-scroll-layout">
+/* Only the content scrolls; navigation is a sibling outside the scroll layer. */
+@media screen {
+ html:has(#appView:not([hidden])):not(:has(body.export-open)),
+ body:has(#appView:not([hidden])):not(.export-open){height:100%;overflow:hidden;overscroll-behavior:none}
+ body:has(#appView:not([hidden])):not(.export-open){padding:0}
+ #appView{display:flex;flex-direction:column;height:100vh;height:100dvh;width:100%;max-width:none;padding:0;overflow:hidden}
+ #appScroll{flex:1 1 0;min-height:0;width:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;padding-bottom:24px;scroll-padding-top:16px;isolation:isolate}
+ #appView>.tabs{position:relative;inset:auto;left:auto;bottom:auto;transform:none;flex:0 0 auto;align-self:center;margin:0;width:min(100%,760px);z-index:40}
+ body.export-open{height:auto;overflow:auto;padding-bottom:0}
+}
+</style>
 </head>
 <body>
 <section id="loginView" class="wrap" style="max-width:440px;padding-top:12vh" aria-labelledby="loginTitle">
@@ -628,6 +640,7 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
   </form>
 </section>
 <div class="wrap" id="appView" hidden inert>
+<div class="wrap" id="appScroll">
   <header class="masthead">
     <div>
       <div class="dept">每日照护 · 记录与查看</div>
@@ -651,14 +664,7 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
     </div>
   </section>
 
-  <nav class="tabs" aria-label="页面导航">
-    <div class="page-tabs" role="tablist" aria-label="切换页面">
-    <button class="tab" id="tabToday" role="tab" aria-controls="viewToday" aria-selected="true" data-view="today"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="4"/><path d="m8 12 3 3 5-6"/></svg><span>今天</span></button>
-    <button class="tab" id="tabTrend" role="tab" aria-controls="viewTrend" aria-selected="false" tabindex="-1" data-view="trend"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v16h16M7 15l4-5 4 2 5-7"/></svg><span>图表</span></button>
-    <button class="tab" id="tabHistory" role="tab" aria-controls="viewHistory" aria-selected="false" tabindex="-1" data-view="history"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9a8 8 0 1 1 0 6M4 4v5h5M12 7v5l3 2"/></svg><span>往日</span></button>
-    </div>
-    <button class="tab" id="tabTpl" role="tab" aria-controls="viewTpl" aria-selected="false" tabindex="-1" data-view="tpl"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg><span>模版</span></button><button class="nav-top" id="btnBackTop" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14M12 21V9m-6 6 6-6 6 6"/></svg><span>回到顶部</span></button>
-  </nav>
+
 
   <div class="status sync-status"><span id="syncStatus" role="status">正在读取记录…</span><button class="btn" id="btnSyncCfg" type="button">同步设置</button><button class="btn" id="btnSyncRetry" type="button" hidden="">重试</button></div>
   <div class="status" id="status"></div>
@@ -681,7 +687,7 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
         <button class="btn" id="btnReset">重置今天</button>
         <button class="btn" id="btnOpenMeds" aria-controls="viewMeds">用药说明</button>
       </div>
-    <p class="buildmark" style="margin:18px 0 0;text-align:center;font-size:11px;color:var(--ink-3,#98A2B3)">版本 0913-nav-touch</p></section>
+    <p class="buildmark" style="margin:18px 0 0;text-align:center;font-size:11px;color:var(--ink-3,#98A2B3)">版本 0913-scroll-layout</p></section>
 
     <section id="viewTrend" role="tabpanel" aria-labelledby="tabTrend" hidden="">
       <p class="panelnote">这里按时间线看血糖、体温、血压、血氧的变化。数据来自家人共享记录；也可以导入以前导出的汇总文件一起看。</p>
@@ -724,6 +730,15 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
     这张清单是按家属口述整理的日常安排，不是医嘱本身，也不能替代医生判断。<br>
     体温 ≥ 38.5 ℃、血糖低于 3.9 mmol/L 或出现心慌出冷汗、输液中出现皮疹胸闷 —— 立刻按铃找护士。
   </footer>
+</div>
+  <nav class="tabs" aria-label="页面导航">
+    <div class="page-tabs" role="tablist" aria-label="切换页面">
+    <button class="tab" id="tabToday" role="tab" aria-controls="viewToday" aria-selected="true" data-view="today"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="4"/><path d="m8 12 3 3 5-6"/></svg><span>今天</span></button>
+    <button class="tab" id="tabTrend" role="tab" aria-controls="viewTrend" aria-selected="false" tabindex="-1" data-view="trend"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v16h16M7 15l4-5 4 2 5-7"/></svg><span>图表</span></button>
+    <button class="tab" id="tabHistory" role="tab" aria-controls="viewHistory" aria-selected="false" tabindex="-1" data-view="history"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9a8 8 0 1 1 0 6M4 4v5h5M12 7v5l3 2"/></svg><span>往日</span></button>
+    </div>
+    <button class="tab" id="tabTpl" role="tab" aria-controls="viewTpl" aria-selected="false" tabindex="-1" data-view="tpl"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></svg><span>模版</span></button><button class="nav-top" id="btnBackTop" type="button"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14M12 21V9m-6 6 6-6 6 6"/></svg><span>回到顶部</span></button>
+  </nav>
 </div>
 
 <script>
@@ -1937,7 +1952,7 @@ document.addEventListener("click", (e)=>{
     e.preventDefault();
     const t=e.touches[0];
     gesture={button,id:t.identifier,x:t.clientX,y:t.clientY,started:Date.now()};
-    window.scrollTo({left:window.scrollX,top:window.scrollY,behavior:'instant'});
+    scrollCareTo(document.getElementById('appScroll').scrollTop,'instant');
   },{passive:false});
   nav.addEventListener('touchmove',e=>{
     if(!gesture)return;
@@ -1975,7 +1990,7 @@ document.addEventListener("click", (e)=>{
   document.addEventListener('visibilitychange',()=>{if(document.hidden)cancel();});
 })();
 
-window.__build = "0913-nav-touch";
+window.__build = "0913-scroll-layout";
 
 function setMealEnd(id,value){
   const it=itemById(id);if(!it?.meal)return;
@@ -2049,10 +2064,21 @@ function switchView(v){
   if(v==="trend") renderTrend({focusToday:true});
   if(v==="history") renderHistory();
   if(v==="tpl") renderTemplates();
-  window.scrollTo({top:0,behavior:'instant'});
+  scrollCareTo(0,'instant');
+}
+function scrollCareTo(top,behavior='instant'){
+  const scroller=document.getElementById('appScroll');
+  if(scroller.scrollTo)scroller.scrollTo({top,left:0,behavior});
+  else scroller.scrollTop=top;
 }
 function scrollPageTop(){
-  window.scrollTo({top:0,behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'instant':'smooth'});
+  scrollCareTo(0,window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'instant':'smooth');
+}
+function scrollCareToRow(row){
+  const scroller=document.getElementById('appScroll');
+  const top=scroller.scrollTop+row.getBoundingClientRect().top-scroller.getBoundingClientRect().top-
+    Math.max(16,(scroller.clientHeight-row.getBoundingClientRect().height)/2);
+  scrollCareTo(Math.max(0,top),window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches?'instant':'smooth');
 }
 document.getElementById('btnBackTop').addEventListener('click',scrollPageTop);
 document.getElementById('btnOpenMeds').addEventListener('click',()=>switchView('meds'));
@@ -2144,8 +2170,7 @@ document.addEventListener("click", function(e){
   setTimeout(function(){
     const row = document.querySelector('[data-row="'+nowTargetId+'"]');
     if(!row) return;
-    try{ row.scrollIntoView({behavior:"smooth", block:"center"}); }
-    catch(err){ row.scrollIntoView(); }
+    scrollCareToRow(row);
     row.classList.add("flash");
     setTimeout(function(){ row.classList.remove("flash"); }, 1600);
   }, 60);
@@ -2187,13 +2212,13 @@ function showExport(content){
   let view = document.getElementById("exportView");
   if(!view){ view=document.createElement("section"); view.id="exportView"; document.body.appendChild(view); }
   if(!document.body.classList.contains("export-open")){
-    exportScroll=window.scrollY; exportFocus=document.activeElement;
+    exportScroll=document.getElementById('appScroll').scrollTop; exportFocus=document.activeElement;
   }
   view.innerHTML='<div class="export-tools"><button id="exportBack">返回清单</button></div>'+content;
   view.hidden=false; document.body.classList.add("export-open"); window.scrollTo(0,0);
   document.getElementById("exportBack").onclick=()=>{
     document.body.classList.remove("export-open"); view.hidden=true;
-    if(exportFocus) exportFocus.focus({preventScroll:true}); window.scrollTo(0,exportScroll);
+    if(exportFocus) exportFocus.focus({preventScroll:true}); scrollCareTo(exportScroll,'instant');
   };
   document.getElementById("exportBack").focus({preventScroll:true});
 }
@@ -3113,5 +3138,6 @@ document.addEventListener('click', async (e)=>{
 
 
 </body></html>
+
 
 
