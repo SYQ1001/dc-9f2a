@@ -346,11 +346,6 @@ button{font-family:inherit;font-size:inherit;cursor:pointer}
 .row.due .card::before{background:var(--due)}
 .row.late .card::before{background:color-mix(in srgb,var(--due) 55%,transparent)}
 .row.late .timechip{color:var(--due)}
-.row.late .ttl::after{
-  content:"未勾";font-size:10.5px;font-weight:700;letter-spacing:.08em;
-  color:var(--due);background:var(--due-soft);border-radius:5px;padding:1.5px 6px;
-  margin-left:7px;vertical-align:2px;white-space:nowrap;
-}
 .row.done .card{background:var(--surface-2);border-color:var(--line)}
 .row.done .card::before{background:var(--done)}
 .row.done .ttl{color:var(--ink-2)}
@@ -378,30 +373,6 @@ button{font-family:inherit;font-size:inherit;cursor:pointer}
 .row.done .tick{background:var(--done);border-color:var(--done);color:var(--on-done)}
 
 .doneat{font-family:var(--mono);font-size:11.5px;color:var(--done);font-weight:600;margin-top:4px;display:block}
-
-/* ---------- 输液进行中 ---------- */
-.row.running .card{border-color:color-mix(in srgb,var(--accent) 55%,var(--line));background:var(--accent-soft)}
-.row.running .card::before{background:var(--accent)}
-.row.running .timechip{color:var(--accent)}
-.ivbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:9px}
-.ivbadge{
-  display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;letter-spacing:.06em;
-  background:var(--accent);color:var(--on-accent);border-radius:6px;padding:3.5px 9px;white-space:nowrap;
-}
-.ivbadge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:0 0 auto}
-@media (prefers-reduced-motion:no-preference){.ivbadge::before{animation:pulse 1.4s ease-in-out infinite}}
-.ivbadge.over{background:var(--due);color:var(--on-due)}
-.ivmeta{font-size:12px;color:var(--ink-2)}
-.ivmeta b{font-family:var(--mono);font-weight:650;color:var(--ink);font-variant-numeric:tabular-nums}
-.ivtrack{height:5px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:9px}
-.ivtrack span{display:block;height:100%;background:var(--accent);border-radius:3px;transition:width .5s linear}
-.row.due .ivtrack span,.row.late .ivtrack span{background:var(--due)}
-.linkbtn{
-  border:0;background:none;color:var(--accent);font-weight:650;font-size:12px;padding:0 1px;
-  text-decoration:underline;text-underline-offset:2px;
-}
-.linkbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.ivdone{display:block;font-family:var(--mono);font-size:11.5px;color:var(--ink-3);margin-top:4px}
 
 /* value entry */
 .vrow{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-top:9px}
@@ -580,14 +551,12 @@ h1{font-size:25px;letter-spacing:-.04em;font-weight:750;line-height:1.3;margin:0
 .sub{font-size:12px;line-height:1.7;margin-top:5px}.linknote{font-size:11px;line-height:1.6}
 .tick{width:44px;height:44px;border-radius:50%;border:1.5px solid var(--line-2);font-size:20px;background:var(--surface-2)}
 .row.done .tick{background:var(--done-soft);border-color:transparent;color:var(--done)}
-.row.late .ttl::after{content:"逾期";font-size:10px;letter-spacing:0;font-weight:600}
 .vrow{gap:8px;margin-top:12px}.vfield{padding:7px 9px;min-height:44px;border-radius:12px;border:1px solid var(--line);max-width:100%;background:var(--surface-2)}
 .row.due .vfield{background:var(--surface-2)}.vfield label{font-size:11px;color:var(--ink-2)}.vfield input{font-size:18px;min-width:0;width:54px}.vfield input.wide{width:72px}.vfield .unit{font-size:11px}
 .vfield.out,.row.due .vfield.out{border-color:var(--due);background:var(--due-soft)}
 .refnote{font-size:11px}.remeasure{min-height:44px;margin:0;padding:6px 10px;border:0;border-radius:10px;background:var(--surface-2);font-size:12px;color:var(--accent)}
 .skiprow{margin-top:2px}.lnk{min-height:44px;font-size:12px;text-decoration:none;color:var(--ink-3);padding:7px 0}
 .pausebar button,.tpl-use,.tpl-edit,.tpl-btn,.tpl-add,.tpl-time,.tpl-ren{min-height:44px}
-.ivbar{gap:8px}.ivmeta{line-height:1.7}.ivbadge{letter-spacing:0;border-radius:8px}
 .chartcard,#viewTrend .chartcard{border-radius:20px;padding:18px 16px;border-color:var(--line);box-shadow:none;margin:14px 0}
 #viewTrend .chartcard h4{font-size:17px}.trend-values strong{font-size:30px;letter-spacing:-.03em}.trend-values small{font-size:12px}
 .panelnote{font-size:13px;line-height:1.7}.tablewrap{border-radius:16px}table.log th{background:var(--surface-2)}
@@ -640,18 +609,19 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
  #timeline .lnk{min-height:28px;padding:3px 0 3px 8px;font-size:11px}
  #timeline .pausebar{gap:6px;margin-top:5px}
  #timeline .pausebar button{min-height:32px;font-size:11px;padding:4px 8px}
- #timeline .vitals{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}
- #timeline .vitals .btn{min-height:34px;padding:5px 8px;font-size:12px}
- #timeline .vitals input[type="time"]{min-height:32px!important}
- #timeline .ivbar{margin-top:6px;gap:6px}
- #timeline .ivbar .btn{min-height:36px;padding:6px 9px;font-size:12px}
- #timeline .ivtrack{margin-top:6px}
  #timeline .phase{margin:17px 0 9px}
  .item-detail-meta{font-size:12px;color:var(--ink-3);margin-bottom:14px}
  .item-detail-copy{font-size:14px;line-height:1.8;margin:10px 0;overflow-wrap:anywhere}
  .item-detail-heading{font-size:14px;margin:18px 0 6px;color:var(--ink)}
  @media(max-width:360px){#timeline .card{padding:9px}#timeline .ttl{font-size:14px}#timeline .tick{right:8px;top:9px}}
 }
+</style>
+<style id="care-card-status">
+#timeline .skiprow{justify-content:space-between;gap:8px}
+#timeline .state-tags{display:flex;flex-wrap:wrap;align-items:center;gap:5px;min-width:0}
+#timeline .state-tags .linktag,#timeline .state-tags .pausetag{margin:0;font-size:10px;line-height:1.5;padding:2px 6px}
+#timeline .skip-actions{margin-left:auto;flex:none;display:flex;align-items:center;gap:5px}
+#timeline .row.late .state-tags::after,#timeline .row.due .state-tags::after{content:"逾期";font-size:10px;font-weight:600;color:var(--due);background:var(--due-soft);border-radius:6px;padding:2px 6px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -713,7 +683,7 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
         <button class="btn" id="btnReset">重置今天</button>
         <button class="btn" id="btnOpenMeds" aria-controls="viewMeds">用药说明</button>
       </div>
-    <p class="buildmark" style="margin:18px 0 0;text-align:center;font-size:11px;color:var(--ink-3,#98A2B3)">版本 0913-compact</p></section>
+    <p class="buildmark" style="margin:18px 0 0;text-align:center;font-size:11px;color:var(--ink-3,#98A2B3)">版本 0913-simple</p></section>
 
     <section id="viewTrend" role="tabpanel" aria-labelledby="tabTrend" hidden="">
       <p class="panelnote">这里按时间线看血糖、体温、血压、血氧的变化。数据来自家人共享记录；也可以导入以前导出的汇总文件一起看。</p>
@@ -946,7 +916,7 @@ const LS = {
 const state = {
   date: todayKey(),
   items: {},          // id -> {done, at, v, st, dur, bn}
-  config: {times:{}, drugs:{}, ivDur:{}, bottles:{}, pause:{}, unlink:{}, custom:[], autoShift:false},
+  config: {times:{}, drugs:{}, bottles:{}, pause:{}, unlink:{}, custom:[], autoShift:false},
 };
 
 const clone=x=>JSON.parse(JSON.stringify(x));
@@ -1259,7 +1229,7 @@ function saveDay(operation="record"){
   if(!cloudReady)return;
   for(const it of allItems()){
     const r=state.items[it.id]||(state.items[it.id]={});
-    r.snapshot={title:titleOf(it),kind:it.kind||'',m:it.m||'',custom:!!it.custom,iv:!!it.iv,meal:!!it.meal,time:waitingMeal(it)?'':timeOf(it),paused:!!isPaused(it)};
+    r.snapshot={title:titleOf(it),kind:it.kind||'',m:it.m||'',custom:!!it.custom,iv:!!it.iv,meal:!!it.meal,time:timeOf(it),paused:!!isPaused(it)};
   }
   queueScope(["days",state.date,"items"],state.items,operation);
 }
@@ -1385,12 +1355,6 @@ function timeOf(it, seen){
     visited.add(it.id);const meal=itemById(it.withMeal.from);
     return meal?timeOf(meal,visited):it.t;
   }
-  if(it.afterMeal&&!r.done){
-    if(r.mealTimingOverride&&r.time)return r.time;
-    const end=(state.items[it.afterMeal.from]||{}).endedAt;
-    const meal=itemById(it.afterMeal.from);
-    return end?toHM(mins(end)+it.afterMeal.off):meal?toHM(mins(timeOf(meal,seen))+it.afterMeal.off):it.t;
-  }
   if(it.before&&!r.done){
     if(r.mealTimingOverride&&r.time)return r.time;
     const visited=new Set(seen||[]);
@@ -1421,11 +1385,10 @@ function timeOf(it, seen){
   return it.t;
 }
 function isPendingMealGlucose(it){const r=state.items[it.id]||{};return it.m==='bg'&&!!it.link&&!r.done&&String(r.v?.n??'').trim()==='';}
-function isLinked(it){ if(it.m==='bg'&&it.link)return isPendingMealGlucose(it); if(it.withMeal)return !(state.items[it.id]||{}).done; if(it.before||it.afterMeal){const r=state.items[it.id]||{};return !r.done&&!(r.mealTimingOverride&&r.time);} if(it.after)return !(state.items[it.id]||{}).done; return !!(!(state.items[it.id]||{}).time && !(state.items[it.id]||{}).done && it.link && !(state.config.unlink||{})[it.id] && !state.config.times[it.id]); }
+function isLinked(it){ if(it.afterMeal)return false; if(it.m==='bg'&&it.link)return isPendingMealGlucose(it); if(it.withMeal)return !(state.items[it.id]||{}).done; if(it.before){const r=state.items[it.id]||{};return !r.done&&!(r.mealTimingOverride&&r.time);} if(it.after)return !(state.items[it.id]||{}).done; return !!(!(state.items[it.id]||{}).time && !(state.items[it.id]||{}).done && it.link && !(state.config.unlink||{})[it.id] && !state.config.times[it.id]); }
 function linkLabel(it){
   if(!isLinked(it)) return "";
   if(it.withMeal){const meal=itemById(it.withMeal.from);return "与"+(meal?meal.title:"对应餐")+"第一口同时（修改用餐时间会一起调整）";}
-  if(it.afterMeal){const meal=itemById(it.afterMeal.from);return (meal?meal.title:"对应餐")+"吃完后 "+it.afterMeal.off+" 分钟";}
   if(it.before){const meal=itemById(it.before.from);return (meal?meal.title:"对应餐")+"前 "+it.before.off+" 分钟（随用餐时间联动）";}
   if(it.after)return "跟着本轮最后一项口服药，之后至少 "+it.after.off+" 分钟";
   const src = itemById(it.link.from); if(!src) return "";
@@ -1483,11 +1446,6 @@ function subOf(it){
   return esc(it.sub);
 }
 
-/* 输液：已开始、还没打勾完成 → 返回它的记录 */
-function ivRun(it){
-  const r = state.items[it.id];
-  return (it.iv && r && r.st && !r.done) ? r : null;
-}
 function ivBottles(it){
   const v = (state.config.bottles||{})[it.id];
   return (v && v>0) ? v : (it.bottles || 1);
@@ -1497,68 +1455,23 @@ function drugOf(it){
   const v = (state.config.drugs||{})[it.ask];
   return (v && v.trim()) ? v.trim() : (it.drug || null);
 }
-function ivDur(it){ return (state.config.ivDur||{})[it.id] || 60; }
-function ivEnd(r, it){ return mins(r.st) + (r.dur || ivDur(it)); }
-/* 该催的时间点：输液进行中就用「预计输完」，否则用排定时间 */
-function waitingMeal(it,seen=new Set()){
-  if(!it||(state.items[it.id]||{}).done||seen.has(it.id))return false;
-  const r=state.items[it.id]||{};seen.add(it.id);
-  if(it.afterMeal&&!(r.mealTimingOverride&&r.time))return !(state.items[it.afterMeal.from]||{}).endedAt;
-  return !!it.after&&it.after.ids.some(id=>{const dep=itemById(id);return dep&&!isOff(dep)&&waitingMeal(dep,new Set(seen));});
-}
-function timeLabel(it){return waitingMeal(it)?'待饭后':timeOf(it);}
-function dueAt(it){
-  if(waitingMeal(it))return Infinity;
-  const run = ivRun(it);
-  return run ? ivEnd(run, it) : mins(timeOf(it));
-}
+function timeLabel(it){return timeOf(it);}
+function dueAt(it){return mins(timeOf(it));}
 function firstOverdue(cur){
   const cands = ordered().filter(i=>{
-    if(isOff(i)||waitingMeal(i)) return false;
+    if(isOff(i)) return false;
     if((state.items[i.id]||{}).done) return false;
-    const run = ivRun(i);
-    return run ? cur >= ivEnd(run, i) : cur >= mins(timeOf(i)) + 12;
+    return cur >= mins(timeOf(i)) + 12;
   }).sort((a,b)=> dueAt(a)-dueAt(b));
   return cands.length ? cands[0].id : null;
 }
 function statusOf(it, cur, headId){
   const r = state.items[it.id];
   if(r && r.done) return "done";
-  if(waitingMeal(it))return "wait";
-  const run = ivRun(it);
-  if(run){
-    if(cur >= ivEnd(run, it)) return it.id === headId ? "due" : "late";
-    return "running";
-  }
   const t = mins(timeOf(it));
   if(cur >= t + 12) return it.id === headId ? "due" : "late";
   if(cur >= t - 8) return "now";
   return "wait";
-}
-
-/* 输液卡片里的开始 / 进行中 / 换瓶控件 */
-function ivPanel(it, cur){
-  const r = state.items[it.id]||{}, total = ivBottles(it);
-  if(r.done) return "";
-  if(!r.st){
-    return '<div class="ivbar">'+
-      '<button class="btn btn-primary" data-ivstart="'+it.id+'">开始输液</button>'+
-      '<span class="ivmeta">'+(total>1 ? '共 '+total+' 瓶 · ' : '')+
-        '每瓶 <button class="linkbtn" data-ivdur="'+it.id+'">'+ivDur(it)+' 分钟</button>后查看瓶子</span>'+
-    '</div>';
-  }
-  const dur = r.dur || ivDur(it), end = ivEnd(r, it), left = end - cur, bn = r.bn || 1;
-  const pct = Math.max(3, Math.min(100, (cur - mins(r.st)) / dur * 100));
-  const over = left <= 0;
-  return '<div class="ivbar">'+
-      '<span class="ivbadge'+(over ? " over" : "")+'">'+(over ? "该看瓶了" : "输液中")+
-        (total>1 ? ' · 第 '+bn+'/'+total+' 瓶' : '')+'</span>'+
-      '<span class="ivmeta">'+r.st+' 开始 · '+
-        (over ? '已超过 <b>'+(-left)+'</b> 分钟' : '还有 <b>'+left+'</b> 分钟')+
-        ' · <button class="linkbtn" data-ivdur="'+it.id+'">改时长</button></span>'+
-    '</div>'+
-    '<div class="ivtrack"><span style="width:'+pct.toFixed(0)+'%"></span></div>'+
-    (bn < total ? '<div class="ivbar"><button class="btn" data-ivnext="'+it.id+'">换下一瓶 · 第 '+(bn+1)+'/'+total+' 瓶</button></div>' : '');
 }
 
 /* ============ 渲染 ============ */
@@ -1642,10 +1555,7 @@ function render_(){
         '<div class="gutter"><button class="timechip" data-time="'+it.id+'" title="修改时间并重新排序；打勾后此时间就是完成时间">'+timeLabel(it)+'</button></div>'+
         '<div class="card"><div class="cardhead"><div class="cardbody">'+
           '<div class="ttl"><span class="kind '+(it.kcls||"")+'">'+it.kind+'</span><button type="button" class="item-title" data-item-detail="'+esc(it.id)+'" aria-haspopup="dialog">'+esc(titleOf(it))+'<span class="detail-chevron" aria-hidden="true"> ›</span></button>'+
-             (paused ? '<span class="pausetag">'+esc(it.paused||"暂停中")+'</span>' :
-              (it.askPause ? '<span class="pausetag" style="background:#5b21b6">'+esc(it.askPause)+'</span>' : ""))+
-             (isLinked(it) ? '<span class="linktag" title="'+esc(linkLabel(it))+'">联动</span>' : "")+
-             (it.custom ? '<span class="linktag" style="background:#5b21b6">自加</span>' : "")+'</div>'+
+          '</div>'+
           '<div class="sub">'+ subOf(it) + (it.custom ? (subOf(it).trim()? ' · ':'') + '<button class="btn btn-ghost" style="padding:1px 7px;font-size:11.5px" data-delitem="'+it.id+'">删除</button>' : '') +'</div>'+
           ((it.paused || it.askPause) ?
             '<div class="pausebar">'+
@@ -1653,15 +1563,19 @@ function render_(){
               '<button data-pause="'+it.id+'" data-v="0" class="'+(paused?"":"on")+'">今天照常吃</button>'+
               (it.pauseWhy?'<span style="font-size:12px;color:var(--ink-3);align-self:center">'+esc(it.pauseWhy)+'</span>':"")+
             '</div>' : "")+
-          (it.meal ? '<div class="vitals"><div class="vfield"><label for="meal-end-'+it.id+'">吃完时间</label><input id="meal-end-'+it.id+'" type="time" data-meal-end="'+it.id+'" value="'+esc(r.endedAt||'')+'" style="width:auto;min-height:44px"></div><button class="btn btn-ghost" data-meal-finish="'+it.id+'">刚吃完</button></div>' : "") +
           (it.m ? valueFields(it) : "") +
-          (it.iv ? '<div class="ivwrap" data-ivwrap="'+it.id+'">'+ivPanel(it, cur)+'</div>' : "") +
 
-          '<div class="skiprow">'+
+          '<div class="skiprow"><div class="state-tags">'+
+             (paused ? '<span class="pausetag">'+esc(it.paused||"暂停中")+'</span>' :
+              (it.askPause ? '<span class="pausetag" style="background:#5b21b6">'+esc(it.askPause)+'</span>' : ""))+
+             (isLinked(it) ? '<span class="linktag" title="'+esc(linkLabel(it))+'">联动</span>' : "")+
+             (it.custom ? '<span class="linktag" style="background:#5b21b6">自加</span>' : "")+
+             (skipped ? '<span class="skiptag">今天跳过</span>' : '')+'</div>'+
+          '<div class="skip-actions">'+
             (skipped
-              ? '<span class="skiptag">今天跳过</span><button class="lnk" data-skip="'+it.id+'" data-v="0">恢复</button>'
+              ? '<button class="lnk" data-skip="'+it.id+'" data-v="0">恢复</button>'
               : (paused ? "" : '<button class="lnk" data-skip="'+it.id+'" data-v="1">今天跳过</button>'))+
-          '</div>' +
+          '</div></div>' +
         '</div>'+
         '<button class="tick" data-tick="'+it.id+'"'+(off?' disabled aria-disabled="true"':'')+' aria-pressed="'+(r.done?"true":"false")+'" aria-label="标记完成：'+esc(titleOf(it))+'">✓</button>'+
         '</div></div></div>';
@@ -1681,15 +1595,12 @@ function tickRefresh(){
     for(const it of ITEMS){
       const row = document.querySelector('[data-row="'+it.id+'"]');
       if(!row) continue;
-      const st = statusOf(it, cur, headId);
+      const st = isOff(it) ? "wait" : statusOf(it, cur, headId);
       if(!row.classList.contains(st)){
         row.classList.remove("done","due","late","now","running","wait");
         row.classList.add(st);
       }
-      if(it.iv){                                  // 输液倒计时和进度条要跟着走
-        const w = row.querySelector('[data-ivwrap]');
-        updateAutomaticHtml(w,ivPanel(it, cur));
-      }
+
     }
   }
   renderNow(cur);
@@ -1717,37 +1628,23 @@ function renderNow(cur){
   if(overdue.length){
     target = overdue[0];
     bar.classList.add("is-due");
-    const run = ivRun(target);
     const late = cur - dueAt(target);
-    label = run ? "输液该看瓶了" : "该做了";
-    meta = run
-      ? '<b>'+run.st+'</b> 开始 · 已经超过 <b>'+late+'</b> 分钟，去看一下瓶子'
-      : '预定 <b>'+timeOf(target)+'</b> · 已经过去 <b>'+late+'</b> 分钟';
+    label = "该做了";
+    meta = '预定 <b>'+timeOf(target)+'</b> · 已经过去 <b>'+late+'</b> 分钟';
     if(overdue.length>1) meta += ' · 另有 '+(overdue.length-1)+' 项没勾';
   }else{
     target = pending[0];
-    const run = ivRun(target);
     const left = dueAt(target) - cur;
     if(left <= 20) bar.classList.add("is-now");
-    if(waitingMeal(target)){
-      label="待吃完饭";meta="记录对应餐的吃完时间后，自动计算饭后提醒";
-    }else if(run){
-      bar.classList.add("is-now");
-      label = "输液中";
-      const total = ivBottles(target), bn = run.bn||1;
-      meta = '<b>'+run.st+'</b> 开始' + (total>1 ? ' · 第 <b>'+bn+'/'+total+'</b> 瓶' : '') +
-             ' · 还有 <b>'+left+'</b> 分钟该查看瓶子';
-    }else{
-      label = "下一项";
-      meta = '<b>'+timeOf(target)+'</b> · 还有 <b>'+left+'</b> 分钟';
-    }
+    label = "下一项";
+    meta = '<b>'+timeOf(target)+'</b> · 还有 <b>'+left+'</b> 分钟';
   }
   if($("#nowLabel").textContent!==label)$("#nowLabel").textContent=label;
   const title=titleOf(target);if($("#nowTitle").textContent!==title)$("#nowTitle").textContent=title;
   updateAutomaticHtml($("#nowMeta"),meta);
   nowTargetId = target ? target.id : null;
   btn.hidden = false;
-  btn.textContent = ivRun(target) ? "输完了" : "完成";
+  btn.textContent = "完成";
   btn.dataset.target = target.id;
 }
 
@@ -1877,7 +1774,7 @@ function showItemDetail(id){
   if(!sessionOpen||document.querySelector('.dlg-mask'))return;
   const it=itemById(id);if(!it)return;
   const r=state.items[id]||{};
-  const status=isPaused(it)?'今天停用':isSkipped(it)?'今天跳过':r.done?'已完成':ivRun(it)?'输液中':'待完成';
+  const status=isPaused(it)?'今天停用':isSkipped(it)?'今天跳过':r.done?'已完成':'待完成';
   let body='<div class="item-detail-meta">'+esc(it.kind)+' · '+esc(timeOf(it))+' · '+status+'</div>';
   if(it.sub)body+='<p class="item-detail-copy">'+esc(it.sub)+'</p>';
   if(isLinked(it))body+='<p class="item-detail-copy">'+esc(linkLabel(it))+'</p>';
@@ -1892,14 +1789,13 @@ function showItemDetail(id){
 function toggle(id){
   const r = rec(id);
   if(r.done){ r.done=false; delete r.at; }
-  else { const it=itemById(id);r.time=waitingMeal(it)?hhmmNow():timeOf(it); r.done=true; r.at=r.time; }
+  else { const it=itemById(id);r.time=timeOf(it); r.done=true; r.at=r.time; }
   saveDay("status"); render();
 }
 
 document.addEventListener("click", (e)=>{
   const detail=e.target.closest("[data-item-detail]");
   if(detail){showItemDetail(detail.dataset.itemDetail);return;}
-  const meal=e.target.closest('[data-meal-finish]');if(meal){setMealEnd(meal.dataset.mealFinish,hhmmNow());return;}
   const t = e.target.closest("[data-tick]");
   if(t){ toggle(t.dataset.tick); return; }
   const nd = e.target.closest("#nowDone");
@@ -1935,31 +1831,6 @@ document.addEventListener("click", (e)=>{
   if(pz){ setPause(pz.dataset.pause, pz.dataset.v === "1"); return; }
   const tc = e.target.closest("[data-time]");
   if(tc){ editTime(tc); return; }
-  const s = e.target.closest("[data-ivstart]");
-  if(s){
-    const it = allItems().find(i=>i.id===s.dataset.ivstart), r = rec(it.id);
-    r.st = hhmmNow(); r.dur = ivDur(it); r.bn = 1; saveDay(); render(); return;
-  }
-  const nx = e.target.closest("[data-ivnext]");
-  if(nx){
-    const it = allItems().find(i=>i.id===nx.dataset.ivnext), r = rec(it.id);
-    r.st = hhmmNow(); r.bn = (r.bn||1) + 1; saveDay(); render(); return;
-  }
-  const du = e.target.closest("[data-ivdur]");
-  if(du){
-    const it = allItems().find(i=>i.id===du.dataset.ivdur), r = rec(it.id);
-    const cur0 = r.dur || ivDur(it);
-    askText("这瓶大概输多少分钟？", "到点会在页面内标记该查看瓶子，不会发出声音或系统通知。", cur0, true).then(v=>{
-      if(v===null) return;
-      const n = parseInt(v, 10);
-      if(!(n > 0 && n <= 600)){ setStatus("请填 1–600 之间的分钟数。"); return; }
-      state.config.ivDur = state.config.ivDur || {};
-      state.config.ivDur[it.id] = n;
-      if(r.st){ r.dur = n; saveDay(); }
-      saveConfig(); render(); setStatus("已设为每瓶 "+n+" 分钟。");
-    });
-    return;
-  }
   const dg = e.target.closest("[data-drug]");
   if(dg){
     const key = dg.dataset.drug;
@@ -2035,17 +1906,8 @@ document.addEventListener("click", (e)=>{
   document.addEventListener('visibilitychange',()=>{if(document.hidden)cancel();});
 })();
 
-window.__build = "0913-compact";
+window.__build = "0913-simple";
 
-function setMealEnd(id,value){
-  const it=itemById(id);if(!it?.meal)return;
-  if(value&&(!/^([01]\d|2[0-3]):[0-5]\d$/.test(value)||mins(value)<mins(timeOf(it)))){
-    setStatus("吃完时间不能早于第一口饭时间，请核对。");return;
-  }
-  const r=rec(id);if(value)r.endedAt=value;else delete r.endedAt;
-  saveDay();render();setStatus(value?"已记录吃完时间，饭后5分钟提醒服药。":"已清除吃完时间，饭后提醒等待重新记录。");
-}
-document.addEventListener('change',e=>{const f=e.target.closest('[data-meal-end]');if(f)setMealEnd(f.dataset.mealEnd,f.value);});
 function editTime(chip){
   const id = chip.dataset.time;
   const it = itemById(id);
@@ -2065,7 +1927,7 @@ function editTime(chip){
     if(inp.value && /^\d{2}:\d{2}$/.test(inp.value) && inp.value!==before){
       const r=rec(id);
       r.time=inp.value;
-      if((it.before||it.afterMeal)&&!r.done)r.mealTimingOverride=true;
+      if(it.before&&!r.done)r.mealTimingOverride=true;
       if(r.done) r.at=inp.value; saveDay();
       setStatus("时间已改为 "+inp.value+"，已按时间重新排序。");
     }
@@ -2269,7 +2131,7 @@ function showExport(content){
 }
 function reportDetail(it){
   const r=state.items[it.id]||{}, v=r.v||{}, parts=[];
-  const status=isPaused(it)?"今天停用":isSkipped(it)?"今天跳过":r.done?"已完成":ivRun(it)?"输液中":"未完成";
+  const status=isPaused(it)?"今天停用":isSkipped(it)?"今天跳过":r.done?"已完成":"未完成";
   parts.push(status);
   if(r.st) parts.push("输液开始 "+r.st);
   if(it.meal&&r.endedAt)parts.push("吃完时间 "+r.endedAt);
@@ -3182,6 +3044,7 @@ document.addEventListener('click', async (e)=>{
 
 
 </body></html>
+
 
 
 
