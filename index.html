@@ -2,7 +2,7 @@
 <html lang="zh-CN"><head>
 
 <meta name="description" content="每日事项、测量记录与日报打印">
-<meta name="care-release" content="0913-today-feedback">
+<meta name="care-release" content="0913-prompt-touch">
 <meta name="care-app" content="dc-9f2a">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" id="vp">
@@ -578,7 +578,12 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
  html:has(#appView:not([hidden])):not(:has(body.export-open)),
  body:has(#appView:not([hidden])):not(.export-open){height:100%;overflow:hidden;overscroll-behavior:none}
  body:has(#appView:not([hidden])):not(.export-open){padding:0}
- #appView{display:flex;flex-direction:column;height:100vh;height:100dvh;width:100%;max-width:none;padding:0;overflow:hidden}
+ #appView{position:relative;display:flex;flex-direction:column;height:100vh;height:100dvh;width:100%;max-width:none;padding:0;overflow:hidden}
+ /* The prompt shares navigation's independent touch layer, outside momentum scrolling. */
+ #appView>#nowBar{position:absolute;top:0;margin:0;visibility:hidden;box-sizing:border-box}
+ #nowBarSlot{height:150px;margin-bottom:6px;pointer-events:none}
+ #nowJump{flex:1;cursor:pointer;border-radius:8px}
+ #nowJump:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
  #appScroll{flex:1 1 0;min-height:0;width:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;padding-bottom:24px;scroll-padding-top:16px;isolation:isolate}
  #appView>.tabs{position:relative;inset:auto;left:auto;bottom:auto;transform:none;flex:0 0 auto;align-self:center;margin:0;width:min(100%,760px);z-index:40}
  body.export-open{height:auto;overflow:auto;padding-bottom:0}
@@ -698,19 +703,7 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
     <div class="ring" id="ringBox"></div>
   </header>
 
-  <section class="nowbar" id="nowBar" aria-live="polite">
-    <div class="nowbar-row">
-      <div style="min-width:0">
-        <div class="eyebrow"><span class="dot"></span><span id="nowLabel">正在加载</span></div>
-        <h2 id="nowTitle">正在读取记录</h2>
-        <div class="meta" id="nowMeta"></div>
-        <div class="nowbar-hint">轻点查看对应事项 →</div>
-      </div>
-      <div class="nowbar-act">
-        <button class="btn btn-primary" id="nowDone" disabled>完成</button>
-      </div>
-    </div>
-  </section>
+  <div id="nowBarSlot" aria-hidden="true"></div>
 
 
 
@@ -775,6 +768,19 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
   </main>
 
 </div>
+  <section class="nowbar" id="nowBar" aria-live="polite">
+    <div class="nowbar-row">
+      <div id="nowJump" role="button" tabindex="0" aria-label="跳到提示事项" style="min-width:0">
+        <div class="eyebrow"><span class="dot"></span><span id="nowLabel">正在加载</span></div>
+        <h2 id="nowTitle">正在读取记录</h2>
+        <div class="meta" id="nowMeta"></div>
+        <div class="nowbar-hint">轻点查看对应事项 →</div>
+      </div>
+      <div class="nowbar-act">
+        <button class="btn btn-primary" id="nowDone" disabled>完成</button>
+      </div>
+    </div>
+  </section>
   <nav class="tabs" aria-label="页面导航">
     <div class="page-tabs" role="tablist" aria-label="切换页面">
     <button class="tab" id="tabToday" role="tab" aria-controls="viewToday" aria-selected="true" data-view="today"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="4"/><path d="m8 12 3 3 5-6"/></svg><span>今天</span></button>
@@ -1725,7 +1731,7 @@ function renderNow(cur){
     $("#nowLabel").textContent = "今天全部完成";
     $("#nowTitle").textContent = "🎉 " + activeItems().length + " 项都打勾了";
     updateAutomaticHtml($("#nowMeta"),"明天 07:00 自动开始新的一天");
-    nowTargetId = null; btn.hidden = true; return;
+    nowTargetId = null; btn.hidden = true; scheduleNowBarLayout(); return;
   }
   let target, label, meta;
   if(overdue.length){
@@ -1749,6 +1755,35 @@ function renderNow(cur){
   btn.hidden = false;
   btn.textContent = "完成";
   btn.dataset.target = target.id;
+  scheduleNowBarLayout();
+}
+
+/* Keep the independent prompt aligned with its original place, then pinned at the top. */
+let nowBarLayoutFrame=0;
+function syncNowBarLayout(){
+  nowBarLayoutFrame=0;
+  const bar=document.getElementById('nowBar'),slot=document.getElementById('nowBarSlot');
+  slot.hidden=bar.hidden;
+  if(bar.hidden||document.getElementById('appView').hidden)return;
+  const scroller=document.getElementById('appScroll'),app=document.getElementById('appView');
+  const rect=slot.getBoundingClientRect(),origin=app.getBoundingClientRect();
+  if(!rect.width)return;
+  bar.style.width=rect.width+'px';
+  slot.style.height=bar.getBoundingClientRect().height+'px';
+  bar.style.left=(rect.left-origin.left)+'px';
+  bar.style.transform='translateY('+Math.max(scroller.getBoundingClientRect().top-origin.top,rect.top-origin.top)+'px)';
+  bar.style.visibility='visible';
+}
+function scheduleNowBarLayout(){
+  if(nowBarLayoutFrame)return;
+  nowBarLayoutFrame=window.requestAnimationFrame?window.requestAnimationFrame(syncNowBarLayout):setTimeout(syncNowBarLayout,0);
+}
+document.getElementById('appScroll').addEventListener('scroll',scheduleNowBarLayout,{passive:true});
+window.addEventListener('resize',scheduleNowBarLayout);
+if(typeof ResizeObserver!=='undefined'){
+  const observer=new ResizeObserver(scheduleNowBarLayout);
+  observer.observe(document.getElementById('nowBar'));
+  observer.observe(document.getElementById('appScroll'));
 }
 
 
@@ -2034,7 +2069,7 @@ document.addEventListener("click", (e)=>{
   document.addEventListener('visibilitychange',()=>{if(document.hidden)cancel();});
 })();
 
-window.__build = "0913-today-feedback";
+window.__build = "0913-prompt-touch";
 
 function editTime(chip){
   const id = chip.dataset.time;
@@ -2096,10 +2131,12 @@ function switchView(v){
   $("#viewHistory").hidden = v!=="history";
   $("#viewTpl").hidden = v!=="tpl";
   $("#nowBar").hidden = v!=="today";
+  $("#nowBarSlot").hidden = v!=="today";
   if(v==="trend") renderTrend({focusToday:true});
   if(v==="history") renderHistory();
   if(v==="tpl") renderTemplates();
   scrollCareTo(0,'instant');
+  scheduleNowBarLayout();
 }
 function scrollCareTo(top,behavior='instant'){
   const scroller=document.getElementById('appScroll');
@@ -2199,19 +2236,63 @@ $("#btnAddItem").addEventListener("click", async ()=>{
 
 
 /* 点顶部横幅 → 跳到对应事项 */
+document.getElementById('nowJump').addEventListener('keydown',e=>{
+  if(e.key==='Enter'||e.key===' '){e.preventDefault();e.currentTarget.click();}
+});
 document.addEventListener("click", function(e){
   if(e.target.closest("#nowDone")) return;          // 「完成」按钮不触发跳转
   const bar = e.target.closest("#nowBar");
-  if(!bar || !nowTargetId) return;
-  if($("#viewToday").hidden){ switchView("today"); }
-  setTimeout(function(){
-    const row = document.querySelector('[data-row="'+nowTargetId+'"]');
-    if(!row) return;
-    scrollCareToRow(row);
-    row.classList.add("flash");
-    setTimeout(function(){ row.classList.remove("flash"); }, 1600);
-  }, 60);
+  if(!bar||!sessionOpen||!nowTargetId||$("#viewToday").hidden)return;
+  const row=document.querySelector('[data-row="'+nowTargetId+'"]');
+  if(!row)return;
+  scrollCareToRow(row);
+  row.classList.add('flash');
+  setTimeout(()=>row.classList.remove('flash'),1600);
 });
+
+(function installPromptTouch(){
+  const bar=document.getElementById('nowBar'),jump=document.getElementById('nowJump');
+  let gesture=null,lastTap=null;
+  const controlAt=target=>target?.closest?.('#nowDone')||(target?.closest?.('#nowBar')?jump:null);
+  const available=control=>sessionOpen&&nowTargetId&&control&&bar.contains(control)&&!control.disabled&&
+    !control.closest('[hidden], [inert]');
+  const cancel=()=>{gesture=null;};
+  bar.addEventListener('touchstart',e=>{
+    cancel();const control=controlAt(e.target);
+    if(e.touches.length!==1||!available(control)||!e.cancelable)return;
+    e.preventDefault();
+    const t=e.touches[0];
+    gesture={control,targetId:nowTargetId,id:t.identifier,x:t.clientX,y:t.clientY,started:Date.now()};
+    scrollCareTo(document.getElementById('appScroll').scrollTop,'instant');
+  },{passive:false});
+  bar.addEventListener('touchmove',e=>{
+    if(!gesture)return;
+    const t=Array.from(e.touches).find(t=>t.identifier===gesture.id);
+    if(e.touches.length!==1||!t||Math.hypot(t.clientX-gesture.x,t.clientY-gesture.y)>12)cancel();
+  },{passive:true});
+  bar.addEventListener('touchend',e=>{
+    const g=gesture;cancel();if(!g)return;
+    if(e.cancelable)e.preventDefault();
+    const t=Array.from(e.changedTouches).find(t=>t.identifier===g.id);
+    if(e.touches.length||!t||!available(g.control)||nowTargetId!==g.targetId||Date.now()-g.started>700||
+       Math.hypot(t.clientX-g.x,t.clientY-g.y)>12||controlAt(document.elementFromPoint(t.clientX,t.clientY))!==g.control)return;
+    lastTap={control:g.control,at:Date.now()};
+    const active=document.activeElement;
+    if(active!==g.control&&active?.matches?.('input, textarea, select, [contenteditable="true"]'))active.blur();
+    if(!available(g.control)||nowTargetId!==g.targetId)return;
+    g.control.focus({preventScroll:true});
+    g.control.click();
+  },{passive:false});
+  bar.addEventListener('touchcancel',cancel,{passive:true});
+  document.addEventListener('touchstart',e=>{if(e.touches.length>1)cancel();},{passive:true,capture:true});
+  bar.addEventListener('click',e=>{
+    if(e.isTrusted&&e.detail>0&&lastTap?.control===controlAt(e.target)&&Date.now()-lastTap.at<750){
+      e.preventDefault();e.stopImmediatePropagation();
+    }
+  },true);
+  window.addEventListener('blur',cancel);
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)cancel();});
+})();
 
 /* ============ 导出 / 导入 / 趋势 ============ */
 
@@ -3197,10 +3278,6 @@ document.addEventListener('click', async (e)=>{
 
 
 </body></html>
-
-
-
-
 
 
 
