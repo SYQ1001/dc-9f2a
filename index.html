@@ -681,7 +681,7 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
         <button class="btn" id="btnReset">重置今天</button>
         <button class="btn" id="btnOpenMeds" aria-controls="viewMeds">用药说明</button>
       </div>
-    </section>
+    <p class="buildmark" style="margin:18px 0 0;text-align:center;font-size:11px;color:var(--ink-3,#98A2B3)">版本 0913-0121</p></section>
 
     <section id="viewTrend" role="tabpanel" aria-labelledby="tabTrend" hidden="">
       <p class="panelnote">这里按时间线看血糖、体温、血压、血氧的变化。数据来自家人共享记录；也可以导入以前导出的汇总文件一起看。</p>
@@ -1918,39 +1918,46 @@ document.addEventListener("click", (e)=>{
   if(tab){ switchView(tab.dataset.view); return; }
 });
 
-/* 惯性滚动时，iOS 会把第一次触摸当成「停止滚动」吞掉，不生成 click，
-   于是要点两下才能切标签页。touchstart / touchend 是照常触发的，
-   所以在 touchend 里直接切，再把随后可能补发的 click 拦掉，避免切两次。 */
+/* 惯性滚动时 iOS 会把第一次触摸当成「停止滚动」，不生成 click，于是要点两下。
+   正在滚动时直接在 touchstart 切换，不等 touchend，也不等 click；
+   不在滚动时走 touchend，保留「按下去再滑开就取消」的习惯。 */
 (function(){
-  const NEAR=12, MAXMS=700;
-  let el=null, sx=0, sy=0, t0=0, doneAt=0;
+  const NEAR=12, MAXMS=700, SCROLLING_MS=450;
+  let el=null, sx=0, sy=0, t0=0, doneAt=0, lastScrollAt=0, fired=false;
+
+  addEventListener('scroll',()=>{lastScrollAt=Date.now();},{passive:true,capture:true});
+
+  const commit=(tab)=>{ doneAt=Date.now(); fired=true; switchView(tab.dataset.view); };
 
   document.addEventListener('touchstart',(e)=>{
-    const tab=e.target.closest('.tab');
+    const tab=e.target.closest&&e.target.closest('.tab');
+    fired=false;
     if(!tab){el=null;return;}
     const t=e.changedTouches[0];
     el=tab; sx=t.clientX; sy=t.clientY; t0=Date.now();
-  },{passive:true});
+    if(Date.now()-lastScrollAt<SCROLLING_MS){ el=null; commit(tab); }  // 滚动中：立刻切
+  },{passive:true,capture:true});
 
   document.addEventListener('touchend',(e)=>{
-    const tab=e.target.closest('.tab');
+    const tab=e.target.closest&&e.target.closest('.tab');
+    if(fired){fired=false;el=null;return;}
     if(!el||tab!==el){el=null;return;}
     el=null;
     const t=e.changedTouches[0];
-    // 手指挪开了或按太久，按取消处理，保留「滑开就不触发」的习惯
     if(Math.abs(t.clientX-sx)>NEAR||Math.abs(t.clientY-sy)>NEAR||Date.now()-t0>MAXMS)return;
-    doneAt=Date.now();
-    switchView(tab.dataset.view);
-  },{passive:true});
+    commit(tab);
+  },{passive:true,capture:true});
 
-  document.addEventListener('touchcancel',()=>{el=null;},{passive:true});
+  document.addEventListener('touchcancel',()=>{el=null;fired=false;},{passive:true,capture:true});
 
   document.addEventListener('click',(e)=>{
     if(Date.now()-doneAt<700&&e.target.closest('.tab')){
-      e.stopPropagation(); e.preventDefault();   // 已经在 touchend 切过了
+      e.stopPropagation(); e.preventDefault();   // 已经切过了，别切第二次
     }
   },true);
 })();
+
+window.__build = "0913-0121";
 
 function setMealEnd(id,value){
   const it=itemById(id);if(!it?.meal)return;
