@@ -425,14 +425,6 @@ button{font-family:inherit;font-size:inherit;cursor:pointer}
 }
 .row.due .note{background:var(--surface)}
 .note b{color:var(--ink);font-weight:650}
-details.more{margin-top:8px}
-details.more>summary{
-  list-style:none;cursor:pointer;font-size:12px;color:var(--accent);font-weight:600;
-  display:inline-flex;align-items:center;gap:4px;
-}
-details.more>summary::-webkit-details-marker{display:none}
-details.more>summary::after{content:"▾";font-size:10px}
-details.more[open]>summary::after{content:"▴"}
 
 /* ---------- log view ---------- */
 .panelnote{font-size:12.5px;color:var(--ink-2);margin:0 0 14px;line-height:1.6}
@@ -593,7 +585,6 @@ h1{font-size:25px;letter-spacing:-.04em;font-weight:750;line-height:1.3;margin:0
 .row.due .vfield{background:var(--surface-2)}.vfield label{font-size:11px;color:var(--ink-2)}.vfield input{font-size:18px;min-width:0;width:54px}.vfield input.wide{width:72px}.vfield .unit{font-size:11px}
 .vfield.out,.row.due .vfield.out{border-color:var(--due);background:var(--due-soft)}
 .refnote{font-size:11px}.remeasure{min-height:44px;margin:0;padding:6px 10px;border:0;border-radius:10px;background:var(--surface-2);font-size:12px;color:var(--accent)}
-details.more{margin-top:5px}details.more>summary{min-height:44px;font-size:12px;align-items:center}
 .skiprow{margin-top:2px}.lnk{min-height:44px;font-size:12px;text-decoration:none;color:var(--ink-3);padding:7px 0}
 .pausebar button,.tpl-use,.tpl-edit,.tpl-btn,.tpl-add,.tpl-time,.tpl-ren{min-height:44px}
 .ivbar{gap:8px}.ivmeta{line-height:1.7}.ivbadge{letter-spacing:0;border-radius:8px}
@@ -625,6 +616,41 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
  #appScroll{flex:1 1 0;min-height:0;width:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;padding-bottom:24px;scroll-padding-top:16px;isolation:isolate}
  #appView>.tabs{position:relative;inset:auto;left:auto;bottom:auto;transform:none;flex:0 0 auto;align-self:center;margin:0;width:min(100%,760px);z-index:40}
  body.export-open{height:auto;overflow:auto;padding-bottom:0}
+}
+</style>
+<style id="care-compact-cards">
+@media screen {
+ #timeline .row{padding-bottom:8px;gap:7px}
+ #timeline .card{padding:10px 12px;border-radius:15px}
+ #timeline .cardhead{display:block}
+ #timeline .ttl{padding-right:44px;font-size:15px;line-height:1.45;min-height:36px}
+ #timeline .item-title{display:inline;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;line-height:inherit;cursor:pointer;overflow-wrap:anywhere}
+ .item-title:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:3px}
+ .detail-chevron{color:var(--ink-3);font-weight:400;white-space:nowrap}
+ #timeline .tick{position:absolute;right:10px;top:10px;width:36px;height:36px;font-size:18px}
+ #timeline .sub{font-size:12px;line-height:1.55;margin-top:2px}
+ #timeline .sub:empty{display:none}
+ #timeline .vrow{gap:6px;margin-top:7px}
+ #timeline .vfield{min-height:36px;padding:4px 7px;border-radius:9px;gap:4px}
+ #timeline .vfield input{font-size:16px;width:42px}
+ #timeline .vfield input.wide{width:64px}
+ #timeline .remeasure{min-height:32px;padding:4px 7px;white-space:nowrap;font-size:11px;border-radius:8px;margin:0}
+ #timeline .refnote{font-size:10px;line-height:1.5}
+ #timeline .skiprow{display:flex;justify-content:flex-end;align-items:center;gap:6px;margin-top:2px;min-height:0}
+ #timeline .lnk{min-height:28px;padding:3px 0 3px 8px;font-size:11px}
+ #timeline .pausebar{gap:6px;margin-top:5px}
+ #timeline .pausebar button{min-height:32px;font-size:11px;padding:4px 8px}
+ #timeline .vitals{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px}
+ #timeline .vitals .btn{min-height:34px;padding:5px 8px;font-size:12px}
+ #timeline .vitals input[type="time"]{min-height:32px!important}
+ #timeline .ivbar{margin-top:6px;gap:6px}
+ #timeline .ivbar .btn{min-height:36px;padding:6px 9px;font-size:12px}
+ #timeline .ivtrack{margin-top:6px}
+ #timeline .phase{margin:17px 0 9px}
+ .item-detail-meta{font-size:12px;color:var(--ink-3);margin-bottom:14px}
+ .item-detail-copy{font-size:14px;line-height:1.8;margin:10px 0;overflow-wrap:anywhere}
+ .item-detail-heading{font-size:14px;margin:18px 0 6px;color:var(--ink)}
+ @media(max-width:360px){#timeline .card{padding:9px}#timeline .ttl{font-size:14px}#timeline .tick{right:8px;top:9px}}
 }
 </style>
 </head>
@@ -687,7 +713,7 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
         <button class="btn" id="btnReset">重置今天</button>
         <button class="btn" id="btnOpenMeds" aria-controls="viewMeds">用药说明</button>
       </div>
-    <p class="buildmark" style="margin:18px 0 0;text-align:center;font-size:11px;color:var(--ink-3,#98A2B3)">版本 0913-scroll-layout</p></section>
+    <p class="buildmark" style="margin:18px 0 0;text-align:center;font-size:11px;color:var(--ink-3,#98A2B3)">版本 0913-compact</p></section>
 
     <section id="viewTrend" role="tabpanel" aria-labelledby="tabTrend" hidden="">
       <p class="panelnote">这里按时间线看血糖、体温、血压、血氧的变化。数据来自家人共享记录；也可以导入以前导出的汇总文件一起看。</p>
@@ -726,10 +752,6 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
     </section>
   </main>
 
-  <footer>
-    这张清单是按家属口述整理的日常安排，不是医嘱本身，也不能替代医生判断。<br>
-    体温 ≥ 38.5 ℃、血糖低于 3.9 mmol/L 或出现心慌出冷汗、输液中出现皮疹胸闷 —— 立刻按铃找护士。
-  </footer>
 </div>
   <nav class="tabs" aria-label="页面导航">
     <div class="page-tabs" role="tablist" aria-label="切换页面">
@@ -1554,10 +1576,13 @@ function ring(){
 }
 
 function valueFields(it){
-  // 包一层：在测量输入区末尾挂一个「再测一次」，不动原有三个分支
+  // Repeat action is part of the measurement row, ahead of the reference note.
   let html=valueFieldsCore(it);
   if(it.m && !it.reOf && !isOff(it)){
-    html+='<button type="button" class="remeasure" data-remeasure="'+it.id+'">再测一次</button>';
+    const action='<button type="button" class="remeasure" data-remeasure="'+it.id+'">再测一次</button>';
+    const ref=html.indexOf('<span class="refnote">');
+    const at=ref<0?html.lastIndexOf('</div>'):ref;
+    html=html.slice(0,at)+action+html.slice(at);
   }
   return html;
 }
@@ -1597,7 +1622,6 @@ function updateAutomaticHtml(el,html){
 }
 function render(){if(!sessionOpen)return;try{ return render_(); }catch(e){ try{ window.__showErr && window.__showErr("画清单时出错："+e.message); }catch(_){} } }
 function render_(){
-  const expanded=new Set([...document.querySelectorAll('#timeline [data-row] details.more[open]')].map(el=>el.closest('[data-row]').dataset.row));
   const cur = nowMins();
   const headId = firstOverdue(cur);
   const list = ordered();
@@ -1617,12 +1641,12 @@ function render_(){
       html += '<div class="row '+st+(off?" is-paused":"")+'" data-row="'+it.id+'">'+
         '<div class="gutter"><button class="timechip" data-time="'+it.id+'" title="修改时间并重新排序；打勾后此时间就是完成时间">'+timeLabel(it)+'</button></div>'+
         '<div class="card"><div class="cardhead"><div class="cardbody">'+
-          '<div class="ttl"><span class="kind '+(it.kcls||"")+'">'+it.kind+'</span>'+esc(titleOf(it))+
+          '<div class="ttl"><span class="kind '+(it.kcls||"")+'">'+it.kind+'</span><button type="button" class="item-title" data-item-detail="'+esc(it.id)+'" aria-haspopup="dialog">'+esc(titleOf(it))+'<span class="detail-chevron" aria-hidden="true"> ›</span></button>'+
              (paused ? '<span class="pausetag">'+esc(it.paused||"暂停中")+'</span>' :
               (it.askPause ? '<span class="pausetag" style="background:#5b21b6">'+esc(it.askPause)+'</span>' : ""))+
              (isLinked(it) ? '<span class="linktag" title="'+esc(linkLabel(it))+'">联动</span>' : "")+
              (it.custom ? '<span class="linktag" style="background:#5b21b6">自加</span>' : "")+'</div>'+
-          '<div class="sub">'+ subOf(it) + (isLinked(it) ? ' <span class="linknote">· '+esc(linkLabel(it))+'</span>' : '') + (it.custom ? (subOf(it).trim()? ' · ':'') + '<button class="btn btn-ghost" style="padding:1px 7px;font-size:11.5px" data-delitem="'+it.id+'">删除</button>' : '') +'</div>'+
+          '<div class="sub">'+ subOf(it) + (it.custom ? (subOf(it).trim()? ' · ':'') + '<button class="btn btn-ghost" style="padding:1px 7px;font-size:11.5px" data-delitem="'+it.id+'">删除</button>' : '') +'</div>'+
           ((it.paused || it.askPause) ?
             '<div class="pausebar">'+
               '<button data-pause="'+it.id+'" data-v="1" class="'+(paused?"on":"")+'">今天停用</button>'+
@@ -1633,7 +1657,6 @@ function render_(){
           (it.m ? valueFields(it) : "") +
           (it.iv ? '<div class="ivwrap" data-ivwrap="'+it.id+'">'+ivPanel(it, cur)+'</div>' : "") +
 
-          (it.note ? '<details class="more"'+(expanded.has(it.id)?' open':'')+'><summary>注意事项</summary><div class="note">'+it.note+'</div></details>' : "") +
           '<div class="skiprow">'+
             (skipped
               ? '<span class="skiptag">今天跳过</span><button class="lnk" data-skip="'+it.id+'" data-v="0">恢复</button>'
@@ -1789,6 +1812,7 @@ function setPause(id, v){
 function dlgOpen(opts){
   return new Promise(resolve=>{
     const mask=document.createElement("div"); mask.className="dlg-mask";
+    const priorFocus=document.activeElement;
     const isInput = opts.type==="input"||opts.type==="time";
     const isChoice=opts.type==="choice";
     mask.innerHTML =
@@ -1801,16 +1825,19 @@ function dlgOpen(opts){
           (isChoice?'<div class="dlg-choices">'+opts.choices.map((label,i)=>'<button type="button" data-choice="'+i+'">'+esc(label)+'</button>').join('')+'</div>':'')+
         '</div>'+
         '<div class="dlg-f">'+
-          '<button data-a="0">'+esc(opts.cancel||"取消")+'</button>'+
+          (opts.type==='info'?'':'<button data-a="0">'+esc(opts.cancel||"取消")+'</button>')+
           (isChoice?'':'<button class="'+(opts.danger?"dan":"pri")+'" data-a="1">'+esc(opts.ok||"确定")+'</button>')+
         '</div>'+
       '</div>';
     document.body.appendChild(mask);
+    if(opts.type==='info')mask.querySelector('[data-a="1"]').focus({preventScroll:true});
     const inp = mask.querySelector("#dlgIn");
     if(inp&&opts.type!=="time"&&!opts.presets){ setTimeout(()=>{ if(!inp.isConnected)return;inp.focus();inp.select(); }, 30); }
     const done=(val)=>{
       if(isInput&&opts.type==='time'&&val!==null&&!/^([01]\d|2[0-3]):[0-5]\d$/.test(val)){inp.setCustomValidity('请选择有效时间');inp.reportValidity();return;}
-      mask.remove();resolve(val);
+      mask.remove();
+      if(opts.type==='info'&&priorFocus?.isConnected)priorFocus.focus({preventScroll:true});
+      resolve(val);
     };
     mask.addEventListener("click", e=>{
       if(e.target===mask) return done(null);
@@ -1837,6 +1864,7 @@ function dlgOpen(opts){
       done(isInput ? (inp ? inp.value : "") : true);
     });
     mask.addEventListener("keydown", e=>{
+      if(opts.type==='info'&&e.key==='Tab'){e.preventDefault();mask.querySelector('[data-a="1"]').focus();}
       if(e.key==="Escape") done(null);
       if(e.key==="Enter" && isInput) done(inp.value);
     });
@@ -1844,6 +1872,21 @@ function dlgOpen(opts){
 }
 const askConfirm = (title, body, opts)=> dlgOpen(Object.assign({type:"confirm",title,body:body||""}, opts||{}));
 const askText = (title, body, value, numeric, tools)=> dlgOpen({type:"input",title,body:body||"",value:value==null?"":String(value),numeric:!!numeric,tools:!!tools});
+
+function showItemDetail(id){
+  if(!sessionOpen||document.querySelector('.dlg-mask'))return;
+  const it=itemById(id);if(!it)return;
+  const r=state.items[id]||{};
+  const status=isPaused(it)?'今天停用':isSkipped(it)?'今天跳过':r.done?'已完成':ivRun(it)?'输液中':'待完成';
+  let body='<div class="item-detail-meta">'+esc(it.kind)+' · '+esc(timeOf(it))+' · '+status+'</div>';
+  if(it.sub)body+='<p class="item-detail-copy">'+esc(it.sub)+'</p>';
+  if(isLinked(it))body+='<p class="item-detail-copy">'+esc(linkLabel(it))+'</p>';
+  if(it.pauseWhy)body+='<p class="item-detail-copy">'+esc(it.pauseWhy)+'</p>';
+  if(it.note)body+='<h3 class="item-detail-heading">注意事项</h3><div class="item-detail-copy">'+(it.custom?esc(it.note):it.note)+'</div>';
+  const ref=it.m==='temp'?REF.temp.txt:it.refTxt;
+  if(ref)body+='<p class="item-detail-copy">参考：'+esc(ref)+'</p>';
+  return dlgOpen({type:'info',title:titleOf(it),body,ok:'关闭'});
+}
 
 /* ============ 交互 ============ */
 function toggle(id){
@@ -1854,6 +1897,8 @@ function toggle(id){
 }
 
 document.addEventListener("click", (e)=>{
+  const detail=e.target.closest("[data-item-detail]");
+  if(detail){showItemDetail(detail.dataset.itemDetail);return;}
   const meal=e.target.closest('[data-meal-finish]');if(meal){setMealEnd(meal.dataset.mealFinish,hhmmNow());return;}
   const t = e.target.closest("[data-tick]");
   if(t){ toggle(t.dataset.tick); return; }
@@ -1990,7 +2035,7 @@ document.addEventListener("click", (e)=>{
   document.addEventListener('visibilitychange',()=>{if(document.hidden)cancel();});
 })();
 
-window.__build = "0913-scroll-layout";
+window.__build = "0913-compact";
 
 function setMealEnd(id,value){
   const it=itemById(id);if(!it?.meal)return;
@@ -2956,8 +3001,7 @@ function renderTemplates(){
       html+='</div>';
     }
   }
-  html+='<button type="button" class="tpl-new" id="btnNewTpl">＋ 从当前新建一个模版</button>'+
-    '<div class="tpl-hint">模版决定每天清单里出现哪些事项、几点做。改名对所有模版生效；时间只在本模版生效。临时加的事项不受模版影响，始终只在当天。往日记录也不受影响。</div>';
+  html+='<button type="button" class="tpl-new" id="btnNewTpl">＋ 从当前新建一个模版</button>';
   box.innerHTML=html;
 }
 
@@ -3138,6 +3182,7 @@ document.addEventListener('click', async (e)=>{
 
 
 </body></html>
+
 
 
 
