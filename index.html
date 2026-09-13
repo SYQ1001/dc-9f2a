@@ -105,7 +105,7 @@
 .swipe-bg{position:absolute;inset:0;display:flex;align-items:center;justify-content:flex-end;
   padding-right:22px;background:#C4342F;color:#fff;font-size:14px;font-weight:600}
 .swipe-fg{position:relative;display:flex;align-items:center;gap:10px;padding:11px 10px 11px 14px;
-  background:var(--surface);touch-action:pan-y;will-change:transform}
+  background:var(--surface);touch-action:pan-y;will-change:auto}
 .tpl-time{flex:0 0 auto;padding:3px 9px;font-size:13px;font-weight:600;font-family:inherit;
   font-variant-numeric:tabular-nums;border:1px solid var(--line-2);border-radius:8px;
   background:var(--surface-2);color:var(--ink)}
@@ -624,6 +624,15 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
 #timeline .row.late .state-tags::after,#timeline .row.due .state-tags::after{content:"逾期";font-size:10px;font-weight:600;color:var(--due);background:var(--due-soft);border-radius:6px;padding:2px 6px;line-height:1.5}
 </style>
 <style>#tplBody .tpl-row{flex-wrap:wrap}#tplBody .tpl-main{flex:1 1 130px}</style>
+<style>
+.tpl-readonly{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line)}
+.tpl-readonly .tpl-time{display:inline-flex;align-items:center}
+.tpl-recycle-entry{display:flex;justify-content:flex-end;margin:-3px 0 14px}
+.swipe{isolation:isolate;clip-path:inset(0);background:var(--surface)}
+.swipe-bg{visibility:hidden;pointer-events:none}
+.swipe.revealing .swipe-bg{visibility:visible}
+.swipe.revealing .swipe-fg{will-change:transform}
+</style>
 </head>
 <body>
 <section id="loginView" class="wrap" style="max-width:440px;padding-top:12vh" aria-labelledby="loginTitle">
@@ -684,7 +693,7 @@ footer{font-size:11px;line-height:1.8}.today-footer .btn{background:var(--surfac
         <button class="btn" id="btnReset">重置今天</button>
         <button class="btn" id="btnOpenMeds" aria-controls="viewMeds">用药说明</button>
       </div>
-    <p class="buildmark" style="margin:18px 0 0;text-align:center;font-size:11px;color:var(--ink-3,#98A2B3)">版本 0913-standard</p></section>
+    <p class="buildmark" style="margin:18px 0 0;text-align:center;font-size:11px;color:var(--ink-3,#98A2B3)">版本 0913-template-clean</p></section>
 
     <section id="viewTrend" role="tabpanel" aria-labelledby="tabTrend" hidden="">
       <p class="panelnote">这里按时间线看血糖、体温、血压、血氧的变化。数据来自家人共享记录；也可以导入以前导出的汇总文件一起看。</p>
@@ -1321,6 +1330,7 @@ function tplPatch(it){
 function allItems(){ return ITEMS.map(tplPatch).concat(customItems()); }
 
 function updateTemplateTime(t,itemId,hm){
+  if(t.id===STANDARD_TEMPLATE_ID)return;
   const item=ITEMS.find(it=>it.id===itemId)||(state.config.custom||[]).find(it=>it.id===itemId);
   const previous=t.t?.[itemId]??item?.t;
   t.t=t.t||{};t.t[itemId]=hm;
@@ -1332,7 +1342,7 @@ function updateTemplateTime(t,itemId,hm){
   }
 }
 function setTplTime(itemId, hm){
-  let t=activeTpl();
+  let t=activeTpl();if(t?.id===STANDARD_TEMPLATE_ID)return;
   if(!t){ // 还在「全部事项」上改时间，就地建一个模版承载它
     t=createTemplate('我的清单', []);
     state.config.activeTpl=t.id;
@@ -1342,6 +1352,7 @@ function setTplTime(itemId, hm){
 }
 function renameItem(itemId, name, templateId){
   if(templateId){
+    if(templateId===STANDARD_TEMPLATE_ID)return;
     const t=templates().find(t=>t.id===templateId);if(!t)return;
     t.names=t.names||{};
     if(name)t.names[itemId]=name;else delete t.names[itemId];
@@ -1352,14 +1363,14 @@ function renameItem(itemId, name, templateId){
   saveConfig(); renderTemplates(); render();
 }
 function removeFromTpl(itemId){
-  let t=activeTpl();
+  let t=activeTpl();if(t?.id===STANDARD_TEMPLATE_ID)return;
   if(!t){ t=createTemplate('我的清单', []); state.config.activeTpl=t.id; }
   t.off=t.off||[];
   if(!t.off.includes(itemId)) t.off.push(itemId);
   saveConfig(); render();
 }
 function addToTpl(itemId){
-  const t=activeTpl(); if(!t)return;
+  const t=activeTpl(); if(!t||t.id===STANDARD_TEMPLATE_ID)return;
   t.off=(t.off||[]).filter(x=>x!==itemId);
   saveConfig(); renderTemplates(); render();
 }
@@ -1733,6 +1744,7 @@ function switchTemplate(id){
   setStatus('已切换到「'+tplName()+'」，今天的清单已按它刷新。');
 }
 function toggleTplItem(tplId, itemId){
+  if(tplId===STANDARD_TEMPLATE_ID)return;
   const t=templates().find(x=>x.id===tplId); if(!t)return;
   t.off = t.off || [];
   const i=t.off.indexOf(itemId);
@@ -1956,7 +1968,7 @@ document.addEventListener("click", (e)=>{
   document.addEventListener('visibilitychange',()=>{if(document.hidden)cancel();});
 })();
 
-window.__build = "0913-standard";
+window.__build = "0913-template-clean";
 
 function editTime(chip){
   const id = chip.dataset.time;
@@ -2878,10 +2890,10 @@ function renderTemplates(){
     html+='<div class="tpl-row'+(on?' on':'')+'">'+
       '<div class="tpl-main"><div class="tpl-name">'+esc(t.name)+'</div>'+
       '<div class="tpl-sub">'+rows.length+' 项事项'+(t.id===STANDARD_TEMPLATE_ID?' · 新模版从这里复制':'')+'</div></div>'+
-      '<button type="button" class="tpl-add" data-tpl-add="'+esc(t.id)+'">加事项</button>'+
+      (t.id===STANDARD_TEMPLATE_ID?'':'<button type="button" class="tpl-add" data-tpl-add="'+esc(t.id)+'">加事项</button>')+
       (on?'<span class="tpl-badge">使用中</span>'
          :'<button type="button" class="tpl-use" data-tpl-use="'+esc(t.id)+'">切换</button>')+
-      '<button type="button" class="tpl-edit" data-tpl-edit="'+esc(t.id)+'">'+(editingTpl===t.id?'收起':'编辑')+'</button>'+
+      '<button type="button" class="tpl-edit" data-tpl-edit="'+esc(t.id)+'">'+(editingTpl===t.id?'收起':t.id===STANDARD_TEMPLATE_ID?'查看':'编辑')+'</button>'+
       '</div>';
 
     if(editingTpl===t.id){
@@ -2889,6 +2901,7 @@ function renderTemplates(){
       const unset=rows.filter(r=>r.unset).length;
       if(unset) html+='<div class="tpl-warn">有 '+unset+' 项还没设时间，点时间可以改</div>';
       for(const r of rows){
+        if(t.id===STANDARD_TEMPLATE_ID){html+='<div class="tpl-readonly"><span class="tpl-time">'+esc(r.t)+'</span><span class="tpl-title">'+esc(r.title)+'</span></div>';continue;}
         html+='<div class="swipe" data-swipe="'+esc(t.id)+'|'+esc(r.id)+'">'+
           '<div class="swipe-bg"><span>移出</span></div>'+
           '<div class="swipe-fg">'+
@@ -2900,13 +2913,12 @@ function renderTemplates(){
             '</button>'+
           '</div></div>';
       }
-      html+='<div class="tpl-acts">'+
-        (t.off||[]).map(id=>{const item=ITEMS.find(i=>i.id===id)||(state.config.custom||[]).find(i=>i.id===id);return item?'<button type="button" class="tpl-btn" data-tpl-restore="'+esc(t.id)+'|'+esc(id)+'">恢复 '+esc(itemNames()[id]||item.title)+'</button>':'';}).join('')+
+      if(t.id!==STANDARD_TEMPLATE_ID)html+='<div class="tpl-acts">'+
         '<button type="button" class="tpl-btn" data-tpl-rename="'+esc(t.id)+'">模版改名</button>'+
-        (t.id===STANDARD_TEMPLATE_ID?'':'<button type="button" class="tpl-btn danger" data-tpl-del="'+esc(t.id)+'">删除模版</button>')+'</div>'+
-        '<div class="tpl-hint">左滑一条可以把它移出本模版，事项本身还在，随时能加回来。</div>';
+        '<button type="button" class="tpl-btn danger" data-tpl-del="'+esc(t.id)+'">删除模版</button></div>';
       html+='</div>';
     }
+    if(t.id!==STANDARD_TEMPLATE_ID)html+='<div class="tpl-recycle-entry"><button type="button" class="tpl-btn" data-tpl-bin="'+esc(t.id)+'">回收站</button></div>';
   }
   html+='<button type="button" class="tpl-new" id="btnNewTpl">＋ 从标准模版新建</button>';
   box.innerHTML=html;
@@ -2917,8 +2929,9 @@ const SWIPE_W=88;
 const reduceMotion=()=>window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function springTo(el, from, to, vel, onDone){
+  const complete=()=>{if(to===0)el.parentElement.classList.remove('revealing');onDone&&onDone();};
   if(el._raf) cancelAnimationFrame(el._raf);
-  if(reduceMotion()){ el.style.transform='translateX('+to+'px)'; el._x=to; onDone&&onDone(); return; }
+  if(reduceMotion()){ el.style.transform='translateX('+to+'px)'; el._x=to; complete(); return; }
   // 临界阻尼，无回弹；带上手指松开时的速度，接得上不突兀
   const stiff=220, damp=2*Math.sqrt(stiff);
   let x=from, v=vel, last=performance.now();
@@ -2928,7 +2941,7 @@ function springTo(el, from, to, vel, onDone){
     v+=a*dt; x+=v*dt;
     el.style.transform='translateX('+x+'px)'; el._x=x; el._v=v;
     if(Math.abs(x-to)<0.5 && Math.abs(v)<12){
-      el.style.transform='translateX('+to+'px)'; el._x=to; el._v=0; el._raf=null; onDone&&onDone(); return;
+      el.style.transform='translateX('+to+'px)'; el._x=to; el._v=0; el._raf=null; complete(); return;
     }
     el._raf=requestAnimationFrame(step);
   };
@@ -2939,17 +2952,27 @@ document.addEventListener('pointerdown',(e)=>{
   const fg=e.target.closest('.swipe-fg'); if(!fg)return;
   if(e.target.closest('button'))return;            // 按钮自己响应，不抢
   const wrap=fg.parentElement;
+  if(wrap.dataset.swipe?.split('|')[0]===STANDARD_TEMPLATE_ID)return;
+  if(e.isPrimary===false||e.button>0)return;
+  wrap._startY=e.clientY;wrap._axis=null;
   if(fg._raf){ cancelAnimationFrame(fg._raf); fg._raf=null; }  // 抓住飞行中的动画
   wrap._startX=e.clientX; wrap._baseX=fg._x??wrap._x??0; wrap._hist=[[e.clientX,performance.now()]];
   wrap._drag=false; wrap._pid=e.pointerId;
-  fg.setPointerCapture(e.pointerId);
 },{passive:true});
 
 document.addEventListener('pointermove',(e)=>{
   const fg=e.target.closest('.swipe-fg'); if(!fg)return;
   const wrap=fg.parentElement; if(wrap._pid!==e.pointerId||wrap._startX===undefined)return;
   let dx=e.clientX-wrap._startX;
-  if(!wrap._drag){ if(Math.abs(dx)<6)return; wrap._drag=true; }
+  const dy=e.clientY-wrap._startY;
+  if(wrap._axis==='y')return;
+  if(!wrap._drag){
+    if(Math.max(Math.abs(dx),Math.abs(dy))<8)return;
+    if(Math.abs(dy)>=Math.abs(dx)){wrap._axis='y';return;}
+    if(Math.abs(dx)<Math.abs(dy)*1.4)return;
+    wrap._axis='x';wrap._drag=true;wrap.classList.add('revealing');
+    fg.setPointerCapture(e.pointerId);
+  }
   let x=wrap._baseX+dx;
   if(x>0) x=x*0.25;                                 // 往右是边界，给阻尼而不是硬停
   if(x<-SWIPE_W) x=-SWIPE_W-(-SWIPE_W-x)*0.35;
@@ -2962,7 +2985,7 @@ function endSwipe(e){
   const fg=e.target.closest('.swipe-fg'); if(!fg)return;
   const wrap=fg.parentElement; if(wrap._pid!==e.pointerId||wrap._startX===undefined)return;
   wrap._startX=undefined;
-  if(e.type==='pointercancel'){wrap._drag=false;wrap._pid=null;wrap._x=0;springTo(fg,fg._x||0,0,0);return;}
+  if(e.type==='pointercancel'||wrap._axis==='y'){if(fg._raf)cancelAnimationFrame(fg._raf);fg._raf=null;wrap._drag=false;wrap._pid=null;wrap._x=0;fg._x=0;fg.style.transform='none';wrap.classList.remove('revealing');return;}
   if(!wrap._drag){wrap._drag=false;wrap._x=0;springTo(fg,fg._x||0,0,0);return;}
   const h=wrap._hist, a=h[0], b=h[h.length-1];
   const span=b[1]-a[1];
@@ -2975,20 +2998,39 @@ function endSwipe(e){
   if(commit){
     springTo(fg, x, -window.innerWidth, v, ()=>{
       const [tid,iid]=wrap.dataset.swipe.split('|');
-      const t=templates().find(z=>z.id===tid); if(!t)return;
+      const t=templates().find(z=>z.id===tid); if(!t||tid===STANDARD_TEMPLATE_ID||!sessionOpen)return;
       t.off=t.off||[]; if(!t.off.includes(iid))t.off.push(iid);
       saveConfig(); renderTemplates(); if(tid===activeTplId())render();
-      setStatus('已移出本模版，事项还在，可以用「加事项」加回来。');
+      setStatus('已移出本模版，事项还在，可以在「回收站」恢复。');
     });
   } else springTo(fg, x, 0, v);
 }
 document.addEventListener('pointerup',endSwipe);
 document.addEventListener('pointercancel',endSwipe);
 
+function templateBinItems(t){
+  return (t.off||[]).map(id=>ITEMS.find(i=>i.id===id)||(state.config.custom||[]).find(c=>c.id===id&&!c.date&&customInTemplate(c,t.id))).filter(Boolean);
+}
+async function openTemplateBin(tid){
+  if(tid===STANDARD_TEMPLATE_ID||!sessionOpen)return;
+  while(sessionOpen){
+    const t=templates().find(t=>t.id===tid);if(!t)return;
+    const items=templateBinItems(t);
+    if(!items.length){await dlgOpen({type:'info',title:'回收站',body:'暂无可恢复事项。',ok:'关闭'});return;}
+    const labels=items.map((it,i)=>(i+1)+'. '+(t.names?.[it.id]||itemNames()[it.id]||it.title));
+    const choice=await dlgOpen({type:'choice',title:t.name+' · 回收站',body:'点选事项，恢复到这个模版。',choices:labels,cancel:'关闭'});
+    if(choice===null||!sessionOpen)return;
+    const item=items[labels.indexOf(choice)],current=templates().find(t=>t.id===tid);
+    if(!item||!current)return;
+    current.off=(current.off||[]).filter(id=>id!==item.id);
+    saveConfig();renderTemplates();render();
+  }
+}
+
 /* ---------- 模版页按钮 ---------- */
 document.addEventListener('click', async (e)=>{
-  const restore=e.target.closest('[data-tpl-restore]');
-  if(restore){const [tid,id]=restore.dataset.tplRestore.split('|');const t=templates().find(z=>z.id===tid);if(!t)return;t.off=(t.off||[]).filter(x=>x!==id);saveConfig();renderTemplates();render();return;}
+  const bin=e.target.closest('[data-tpl-bin]');
+  if(bin){await openTemplateBin(bin.dataset.tplBin);return;}
   const use=e.target.closest('[data-tpl-use]');
   if(use){ switchTemplate(use.dataset.tplUse); renderTemplates(); return; }
 
@@ -2998,7 +3040,7 @@ document.addEventListener('click', async (e)=>{
   const ren=e.target.closest('[data-tpl-ren]');
   if(ren){
     const id=ren.dataset.tplRen, base=ITEMS.find(i=>i.id===id)||(state.config.custom||[]).find(i=>i.id===id);
-    const owner=ren.dataset.tplOwner;
+    const owner=ren.dataset.tplOwner;if(owner===STANDARD_TEMPLATE_ID)return;
     const template=templates().find(t=>t.id===owner);if(!template)return;
     const cur=template.names?.[id]??itemNames()[id]??base?.title??'';
     const name=await askText('重命名事项','只修改这个模版，其他模版和往日记录不受影响。',cur);
@@ -3010,7 +3052,7 @@ document.addEventListener('click', async (e)=>{
 
   const tm=e.target.closest('[data-tpl-time]');
   if(tm){
-    const [tid,iid]=tm.dataset.tplTime.split('|');
+    const [tid,iid]=tm.dataset.tplTime.split('|');if(tid===STANDARD_TEMPLATE_ID)return;
     const t=templates().find(z=>z.id===tid); if(!t)return;
     const cur=(t.t&&t.t[iid])||((ITEMS.find(i=>i.id===iid)||(state.config.custom||[]).find(i=>i.id===iid)||{}).t)||'00:00';
     const v=await dlgOpen({type:'time',title:'几点做？',body:'只改这个模版，其他模版不受影响。',value:cur});
@@ -3023,7 +3065,7 @@ document.addEventListener('click', async (e)=>{
 
   const add=e.target.closest('[data-tpl-add]');
   if(add){
-    const t=templates().find(z=>z.id===add.dataset.tplAdd); if(!t)return;
+    const t=templates().find(z=>z.id===add.dataset.tplAdd); if(!t||t.id===STANDARD_TEMPLATE_ID)return;
     const presets={'测体温':'体温','测血糖':'血糖','测血压':'血压 / 心率','测血氧':'血氧'};
     const title=await dlgOpen({type:'input',title:'新建事项',
       body:'加进「'+esc(t.name)+'」，以后每天都会出现。只做一次的用「今天」页的添加事项。',
@@ -3055,7 +3097,7 @@ document.addEventListener('click', async (e)=>{
 
   const rn=e.target.closest('[data-tpl-rename]');
   if(rn){
-    const t=templates().find(x=>x.id===rn.dataset.tplRename); if(!t)return;
+    const t=templates().find(x=>x.id===rn.dataset.tplRename); if(!t||t.id===STANDARD_TEMPLATE_ID)return;
     const name=await askText('模版名称','比如「日常照护清单」「居家每日清单」。',t.name);
     if(name===null||!name.trim())return;
     const current=templates().find(z=>z.id===t.id);if(!current||!sessionOpen)return;
@@ -3087,6 +3129,7 @@ document.addEventListener('click', async (e)=>{
 
 
 </body></html>
+
 
 
 
